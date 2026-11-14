@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 14,
-  "versionName": "0.13.0",
+  "versionCode": 15,
+  "versionName": "0.14.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.13.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.14.0/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "إصلاح العودة لشاشة الدعم، وبطاقة الأذونات أعلى إعداد الجلسة، وظهور المهمة فور إضافتها، وصياغة فصيحة للخطة، والاسم والأيقونة «مُنظِّم»، وفحص تلقائي للتحديثات."
+  "releaseNotes": "أنواع مهام مخصّصة (إضافة، تعديل، ترتيب، أرشفة، حذف) مع تصفية بها، وإنشاء مهمة بالعنوان فقط مع «خيارات إضافية» اختيارية، وترحيل قاعدة بيانات آمن يحفظ كل المهام."
 }

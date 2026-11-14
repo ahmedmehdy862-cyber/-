@@ -20,33 +20,33 @@ import androidx.compose.ui.unit.sp
 
 /** Brand palette used across the app and the launcher icon. */
 object FocusColors {
-    val Ink = Color(0xFF070B16)
-    val Navy = Color(0xFF0B1222)
-    val Surface = Color(0xFF131C31)
-    val SurfaceHigh = Color(0xFF1B2540)
-    val Outline = Color(0xFF334268)
+    val Ink = Color(0xFF08131F)
+    val Navy = Color(0xFF142B45)
+    val Surface = Color(0xFF16283C)
+    val SurfaceHigh = Color(0xFF1E3550)
+    val Outline = Color(0xFF33506F)
 
     /** Body text: about 15:1 against [Ink], well past WCAG AAA. */
-    val TextPrimary = Color(0xFFF6F9FF)
+    val TextPrimary = Color(0xFFF7F8FA)
 
     /** Secondary text: about 10:1 against [Ink]; readable at small sizes. */
-    val TextSecondary = Color(0xFFC3D0EA)
+    val TextSecondary = Color(0xFFC6D5E4)
 
     /** Lowest emphasis, still about 7:1 against [Ink]. */
-    val TextMuted = Color(0xFFA3B4D6)
+    val TextMuted = Color(0xFF9FB2C6)
 
-    val Blue = Color(0xFF3B82F6)
-    val BlueDeep = Color(0xFF1D4ED8)
-    val Violet = Color(0xFF8B5CF6)
-    val Teal = Color(0xFF14B8A6)
+    val Blue = Color(0xFF16B8A6)
+    val BlueDeep = Color(0xFF0E7C74)
+    val Violet = Color(0xFF2F6F9E)
+    val Teal = Color(0xFF16B8A6)
     val Amber = Color(0xFFF59E0B)
     val Green = Color(0xFF22C55E)
     val Rose = Color(0xFFF43F5E)
 
     val accents = listOf(Blue, Violet, Teal, Amber, Green)
 
-    val background = Brush.verticalGradient(listOf(Ink, Navy, Color(0xFF0E1730)))
-    val hero = Brush.linearGradient(listOf(Color(0xFF1E3FA8), Color(0xFF5B21B6)))
+    val background = Brush.verticalGradient(listOf(Ink, Navy, Color(0xFF0D2033)))
+    val hero = Brush.linearGradient(listOf(Color(0xFF142B45), Color(0xFF0E7C74)))
 
     /**
      * Accent colours are tuned for fills, not for small text. Blending them towards white keeps
@@ -58,12 +58,12 @@ object FocusColors {
 private fun focusScheme(accent: Color) = darkColorScheme(
     primary = accent,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFF1E3A8A),
-    onPrimaryContainer = Color(0xFFE6EDFF),
+    primaryContainer = Color(0xFF0E7C74),
+    onPrimaryContainer = Color(0xFFE3FFFA),
     secondary = FocusColors.Violet,
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFF3B1F7A),
-    onSecondaryContainer = Color(0xFFF0E8FF),
+    secondaryContainer = Color(0xFF142B45),
+    onSecondaryContainer = Color(0xFFDCEAF6),
     tertiary = FocusColors.Teal,
     onTertiary = Color(0xFF04211E),
     background = FocusColors.Ink,

@@ -4,12 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a1020">
-  <meta name="description" content="آخر تحديثات تطبيق مُنظِّم لتنظيم المذاكرة والتركيز.">
+  <meta name="description" content="مُنظِّم — اجمع جوانب حياتك وحوّل الفوضى إلى وضوح.">
   <link rel="icon" type="image/svg+xml" href="/brand.svg">
   <link rel="apple-touch-icon" href="/brand.svg">
   <title>تحديثات مُنظِّم</title>
   <style>
-    :root{color-scheme:dark;--bg:#090e1a;--panel:#111a2c;--panel2:#16223a;--line:#293854;--ink:#f5f7ff;--muted:#a9b8d2;--blue:#65a0ff;--violet:#9a77ff;--mint:#7fe3c2;--amber:#ffd083;--radius:28px}
+    :root{color-scheme:dark;--bg:#090e1a;--panel:#111a2c;--panel2:#16223a;--line:#293854;--ink:#F7F8FA;--muted:#9FB2C6;--blue:#65a0ff;--violet:#0E7C74;--mint:#5FE0CE;--amber:#ffd083;--radius:28px}
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#172d54 0,transparent 38%),radial-gradient(ellipse at 95% 90%,#321d61 0,transparent 34%),var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
     a{color:inherit}
@@ -23,7 +23,7 @@
     main{padding:38px 0 76px}
     .hero{display:grid;grid-template-columns:1.18fr .82fr;gap:28px;align-items:center;padding:42px;border:1px solid #ffffff12;border-radius:36px;background:linear-gradient(135deg,#17233ae8,#101729ee);box-shadow:0 35px 90px #02050b66;overflow:hidden;position:relative}
     .hero:after{content:"";position:absolute;width:320px;height:320px;border-radius:50%;background:#6a50db21;filter:blur(6px);left:-120px;bottom:-180px}
-    .eyebrow{display:inline-flex;padding:6px 13px;border:1px solid #7fe3c244;border-radius:999px;color:var(--mint);font-size:13px;font-weight:700}
+    .eyebrow{display:inline-flex;padding:6px 13px;border:1px solid #5FE0CE44;border-radius:999px;color:var(--mint);font-size:13px;font-weight:700}
     h1{font-size:clamp(34px,5vw,58px);line-height:1.18;margin:18px 0 14px;letter-spacing:-1.5px}
     .lead{max-width:600px;color:var(--muted);font-size:18px;margin:0 0 26px}
     .actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -33,7 +33,7 @@
     .secondary{border-color:var(--line);background:#ffffff05;color:var(--ink)}
     .button[aria-disabled=true]{opacity:.55;pointer-events:none}
     .art{position:relative;min-height:280px;display:grid;place-items:center}
-    .orbit{width:236px;height:236px;border-radius:50%;border:1px solid #8e7aff48;box-shadow:0 0 0 28px #8e7aff09,0 0 0 58px #8e7aff06;display:grid;place-items:center;position:relative}
+    .orbit{width:236px;height:236px;border-radius:50%;border:1px solid #16B8A648;box-shadow:0 0 0 28px #16B8A609,0 0 0 58px #16B8A606;display:grid;place-items:center;position:relative}
     .shield{width:150px;height:150px;object-fit:contain;filter:drop-shadow(0 18px 36px #477dff60)}
     .spark{position:absolute;width:46px;height:46px;border-radius:15px;display:grid;place-items:center;background:#172640;border:1px solid #ffffff20;font-size:22px}
     .spark.one{top:30px;right:10px}.spark.two{bottom:18px;left:4px}
@@ -42,16 +42,16 @@
     .card{border:1px solid #ffffff12;border-radius:22px;background:linear-gradient(150deg,#141e32,#101828);padding:21px}
     .card .icon{font-size:25px}.card h3{margin:8px 0 4px;font-size:17px}.card p{margin:0;color:var(--muted);font-size:14px}
     .release{display:grid;grid-template-columns:1fr auto;gap:24px;align-items:center;padding:26px;border-radius:26px;background:linear-gradient(120deg,#172b49,#211d42);border:1px solid #ffffff15}
-    .release-name{font-size:24px;font-weight:800}.version{display:inline-block;margin-inline-start:9px;padding:3px 10px;border-radius:999px;background:#7fe3c21a;color:var(--mint);font-size:13px;vertical-align:middle}
+    .release-name{font-size:24px;font-weight:800}.version{display:inline-block;margin-inline-start:9px;padding:3px 10px;border-radius:999px;background:#5FE0CE1a;color:var(--mint);font-size:13px;vertical-align:middle}
     .notes{color:var(--muted);margin:8px 0 0;white-space:pre-line}
-    .meta{color:#8495b2;font-size:12px;margin-top:8px}
+    .meta{color:#7E93A8;font-size:12px;margin-top:8px}
     .status{min-height:26px;color:var(--muted);font-size:13px;margin-top:13px}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;counter-reset:step}
     .step{position:relative;padding:20px 58px 20px 18px;border-radius:20px;background:#ffffff07;border:1px solid #ffffff10;color:var(--muted);font-size:14px}
-    .step:before{counter-increment:step;content:counter(step);position:absolute;right:17px;top:19px;width:27px;height:27px;border-radius:10px;display:grid;place-items:center;background:#487ff52c;color:#9fc2ff;font-weight:800}
-    footer{border-top:1px solid #ffffff12;padding:22px 0 32px;color:#8392aa;font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .step:before{counter-increment:step;content:counter(step);position:absolute;right:17px;top:19px;width:27px;height:27px;border-radius:10px;display:grid;place-items:center;background:#487ff52c;color:#9FE9DF;font-weight:800}
+    footer{border-top:1px solid #ffffff12;padding:22px 0 32px;color:#7E93A8;font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .hidden{display:none!important}
-    .admin-link{color:#c8d5ee;text-decoration:none;font-size:13px;border:1px solid #ffffff1a;border-radius:999px;padding:7px 12px;transition:background .16s ease}.admin-link:hover{background:#ffffff0c}
+    .admin-link{color:#C6D5E4;text-decoration:none;font-size:13px;border:1px solid #ffffff1a;border-radius:999px;padding:7px 12px;transition:background .16s ease}.admin-link:hover{background:#ffffff0c}
     @media(max-width:760px){.hero{grid-template-columns:1fr;padding:28px 22px;gap:0}.art{min-height:210px;order:-1}.orbit{width:168px;height:168px}.shield{width:112px;height:112px}.spark.one{right:20px}.spark.two{left:16px}.grid,.steps{grid-template-columns:1fr}.release{grid-template-columns:1fr}.release .button{width:100%}header{padding:18px 0}.online{font-size:11px}}
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;transition:none!important}}
   </style>
