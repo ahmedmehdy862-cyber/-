@@ -18,7 +18,10 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKey = keystorePropertiesFile.isFile &&
     !keystoreProperties.getProperty("storeFile").isNullOrBlank()
-val updateFeedUrl = providers.gradleProperty("focusStudyUpdateFeedUrl").orElse("").get()
+// Defaults to the live feed so a plain `assembleRelease` still receives updates;
+// override with -PfocusStudyUpdateFeedUrl=... when testing another feed.
+val defaultUpdateFeedUrl = "https://update-site-sigma.vercel.app/api/latest"
+val updateFeedUrl = providers.gradleProperty("focusStudyUpdateFeedUrl").orElse(defaultUpdateFeedUrl).get()
 val escapedUpdateFeedUrl = updateFeedUrl.replace("\\", "\\\\").replace("\"", "\\\"")
 
 android {
@@ -29,8 +32,8 @@ android {
         applicationId = "com.focusstudy.poc"
         minSdk = 26
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.12.0"
+        versionCode = 14
+        versionName = "0.13.0"
         buildConfigField("String", "UPDATE_FEED_URL", "\"$escapedUpdateFeedUrl\"")
     }
 

@@ -78,7 +78,7 @@ class BlockVpnService : VpnService() {
         startForeground(NOTIFICATION_ID, buildNotification(SessionEngine.active.value?.taskTitle))
 
         val builder = Builder()
-            .setSession("Focus Study")
+            .setSession("مُنظِّم")
             .setMtu(1500)
             .addAddress("10.111.222.1", 24)
             .addRoute("0.0.0.0", 0)

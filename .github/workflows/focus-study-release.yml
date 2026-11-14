@@ -1,4 +1,4 @@
-name: Build and sync Focus Study release
+name: Build and sync مُنظِّم release
 
 on:
   push:
@@ -73,9 +73,9 @@ jobs:
           NOTES="$(git log -1 --pretty=%B)"
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" app/build/outputs/apk/release/Focus-Study.apk --clobber
-            gh release edit "$TAG_NAME" --title "Focus Study $VERSION_NAME" --notes "$NOTES"
+            gh release edit "$TAG_NAME" --title "مُنظِّم $VERSION_NAME" --notes "$NOTES"
           else
-            gh release create "$TAG_NAME" app/build/outputs/apk/release/Focus-Study.apk --title "Focus Study $VERSION_NAME" --notes "$NOTES"
+            gh release create "$TAG_NAME" app/build/outputs/apk/release/Focus-Study.apk --title "مُنظِّم $VERSION_NAME" --notes "$NOTES"
           fi
 
       - name: Sync central feed for the app and QUBIXStore

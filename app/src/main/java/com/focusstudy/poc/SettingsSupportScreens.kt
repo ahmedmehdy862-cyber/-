@@ -259,7 +259,7 @@ internal fun PersonalizationScreen(
                         }
                     }
                     if (!notificationsAllowed) {
-                        Text("اسمح بإشعارات Focus Study من أندرويد حتى تصلك تنبيهات المهام.", color = FocusColors.onTint(FocusColors.Amber), style = MaterialTheme.typography.bodySmall)
+                        Text("اسمح بإشعارات مُنظِّم من أندرويد حتى تصلك تنبيهات المهام.", color = FocusColors.onTint(FocusColors.Amber), style = MaterialTheme.typography.bodySmall)
                     }
                     if (generalNotifications) {
                         PreferenceSwitchRow("رسالة صباحية", "تشجيع باسمك في بداية اليوم.", morningEnabled) { morningEnabled = it }
@@ -366,7 +366,7 @@ internal fun SupportScreen(onBack: () -> Unit) {
                 Button(
                     onClick = {
                         val url = "https://wa.me/$SUPPORT_USERNAME?text=" +
-                            Uri.encode("مرحبًا، أحتاج مساعدة بخصوص تطبيق Focus Study.")
+                            Uri.encode("مرحبًا، أحتاج مساعدة بخصوص تطبيق مُنظِّم.")
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                             .onFailure { Toast.makeText(context, "تعذر فتح واتساب. انسخ اسم المستخدم وحاول مرة أخرى.", Toast.LENGTH_LONG).show() }
                     },
@@ -413,7 +413,7 @@ internal fun AppUpdatesScreen(onBack: () -> Unit) {
             Text("تحديثات التطبيق", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(16.dp))
-        PreferenceCard(title = "إصدارك الحالي", description = "Focus Study ${BuildConfig.VERSION_NAME}") {
+        PreferenceCard(title = "إصدارك الحالي", description = "مُنظِّم ${BuildConfig.VERSION_NAME}") {
             when {
                 checking -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)

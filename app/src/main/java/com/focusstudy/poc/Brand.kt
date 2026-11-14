@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
- * The Focus Study mark: a shield (blocking / discipline) holding a bolt (energy / study).
+ * The مُنظِّم mark: a shield (blocking / discipline) holding a bolt (energy / study).
  * Drawn in code so it stays sharp at any size and can be reused in the UI.
  */
 @Composable

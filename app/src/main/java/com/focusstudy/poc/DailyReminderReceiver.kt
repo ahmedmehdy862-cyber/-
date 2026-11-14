@@ -156,7 +156,7 @@ internal object StudyNotificationScheduler {
         val enabled = prefs.generalNotificationsEnabled &&
             if (morning) prefs.morningMessageEnabled else prefs.eveningMessageEnabled
         if (!enabled || !notificationsAllowed(context)) return
-        val name = prefs.studentName.trim().ifBlank { "بطل Focus Study" }
+        val name = prefs.studentName.trim().ifBlank { "بطل مُنظِّم" }
         val messages = if (morning) listOf(
             "صباحك فرصة جديدة، ابدأ بأصغر خطوة وهتلاقي يومك بيتحرك.",
             "كل إنجاز كبير بدأ بتركيز بسيط. اختار أول مهمة وابدأ.",

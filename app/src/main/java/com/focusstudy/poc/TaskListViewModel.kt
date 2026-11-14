@@ -53,7 +53,8 @@ class TaskListViewModel(application: Application) : AndroidViewModel(application
         dueAt: Long?,
         subjectId: Long?,
         notes: String,
-        recurrence: Recurrence
+        recurrence: Recurrence,
+        onSaved: () -> Unit = {}
     ) {
         viewModelScope.launch {
             repository.add(
@@ -70,6 +71,7 @@ class TaskListViewModel(application: Application) : AndroidViewModel(application
             )
             SessionEngine.notifyTasksChanged()
             refresh()
+            onSaved()
         }
     }
 

@@ -26,9 +26,9 @@ module.exports = async function latestRelease(request, response) {
     apkUrl: String(release.apkUrl || ""),
     app: {
       id: "focus-study",
-      name: "Focus Study",
+      name: "مُنظِّم",
       category: "تعليم",
-      developer: "Focus Study",
+      developer: "مُنظِّم",
       description: String(release.description || "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة."),
       versionCode: release.versionCode,
       versionName: release.versionName,

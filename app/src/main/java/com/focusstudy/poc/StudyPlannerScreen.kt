@@ -56,7 +56,7 @@ internal fun StudyPlannerScreen(dailyGoal: Int, onBack: () -> Unit, onStartTask:
         Spacer(Modifier.height(10.dp))
         if (plan.isEmpty()) {
             Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("مافيش مهام مفتوحة للخطة حاليًا.", style = MaterialTheme.typography.titleMedium)
+                Text("لا توجد مهام مفتوحة للخطة حاليًا.", style = MaterialTheme.typography.titleMedium)
                 Text("أضف مهامًا مع مدة أو موعد استحقاق عشان نرتبها لك.", color = FocusColors.TextSecondary)
             }
         } else LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {

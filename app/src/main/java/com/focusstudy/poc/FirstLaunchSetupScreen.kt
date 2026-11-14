@@ -54,7 +54,7 @@ internal fun FirstLaunchSetupScreen(
     var eveningHour by rememberSaveable { mutableStateOf(current.eveningMessageHour) }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 16.dp)) {
-        Text("Focus Study", style = MaterialTheme.typography.labelLarge, color = FocusColors.onTint(FocusColors.Blue))
+        Text("مُنظِّم", style = MaterialTheme.typography.labelLarge, color = FocusColors.onTint(FocusColors.Blue))
         Text(if (page == 0) "نجهّز مساحتك الدراسية" else "نضبط طريقة التذكير", style = MaterialTheme.typography.headlineSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.Bold)
         Text("الخطوة ${page + 1} من 2", style = MaterialTheme.typography.bodySmall, color = FocusColors.TextSecondary)
         Spacer(Modifier.height(12.dp))

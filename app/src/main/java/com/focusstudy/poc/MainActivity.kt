@@ -319,6 +319,7 @@ class MainActivity : ComponentActivity() {
                         onResumeVpn = ::resumeVpnBlocking,
 
                         onRequestNotifications = ::requestNotificationPermissionIfNeeded,
+                        onGrantVpn = ::grantVpnConsent,
                         openUpdatesInitially = intent?.getBooleanExtra(AppUpdateManager.EXTRA_OPEN_UPDATES, false) == true
 
                     )
@@ -379,6 +380,20 @@ class MainActivity : ComponentActivity() {
 
     /** Re-creates network filtering during a running session; the session itself stays locked. */
 
+    /** Asks for VPN consent from any screen; the ready state is re-read on resume. */
+
+    private fun grantVpnConsent() {
+
+        val consent = VpnService.prepare(this)
+
+        if (consent != null) {
+
+            vpnPermission.launch(consent)
+
+        }
+
+    }
+
     private fun resumeVpnBlocking() {
 
         val consent = VpnService.prepare(this)
@@ -417,6 +432,7 @@ private fun AppRoot(
     onResumeVpn: () -> Unit,
 
     onRequestNotifications: () -> Unit,
+    onGrantVpn: () -> Unit,
     openUpdatesInitially: Boolean
 
 ) {
@@ -465,6 +481,18 @@ private fun AppRoot(
 
     }
 
+    // System back must return to the previous screen instead of leaving the app.
+    androidx.activity.compose.BackHandler(
+        enabled = screen !in setOf("today", "tasks", "session")
+    ) {
+        when {
+            pickerTaskId != null -> pickerTaskId = null
+            setupTaskId != null -> setupTaskId = null
+            rootTab == "permanent_apps" -> rootTab = "settings"
+            else -> returnToPreviousTab()
+        }
+    }
+
     BrandBackground {
 
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -509,6 +537,7 @@ private fun AppRoot(
                         onBack = { setupTaskId = null },
 
                         onRequestNotifications = onRequestNotifications,
+                        onGrantVpn = onGrantVpn,
 
                         onStart = { taskId, title, minutes, packages ->
 
@@ -735,7 +764,7 @@ private fun TasksScreen(
 
                 Text(
 
-                    text = if (!dashboard) "مهامي" else if (preferences.studentName.isBlank()) "Focus Study" else "أهلًا، ${preferences.studentName}",
+                    text = if (!dashboard) "مهامي" else if (preferences.studentName.isBlank()) "مُنظِّم" else "أهلًا، ${preferences.studentName}",
 
                     style = MaterialTheme.typography.titleMedium,
 
@@ -916,9 +945,9 @@ private fun TasksScreen(
             subjects = subjectState.subjects,
             onAdd = { title, minutes, category, priority, dueAtString, recurrence, notes, subjectId ->
 
-                viewModel.add(title, minutes, category, priority, parseDueDateMillis(dueAtString), subjectId, notes.orEmpty(), recurrence)
+                viewModel.add(title, minutes, category, priority, parseDueDateMillis(dueAtString), subjectId, notes.orEmpty(), recurrence) { showAddDialog = false }
 
-                showAddDialog = false
+
 
             },
 
@@ -1091,7 +1120,12 @@ private fun MoreSectionsScreen(
     onUpdates: () -> Unit,
     onPrayerTimes: () -> Unit
 ) {
-    Column(Modifier.fillMaxSize().padding(horizontal = 18.dp, vertical = 20.dp)) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 18.dp, vertical = 20.dp)
+    ) {
         Text("المزيد", style = MaterialTheme.typography.headlineSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text("أدوات تساعدك على التخطيط ومراجعة تقدمك وتخصيص تجربتك.", style = MaterialTheme.typography.bodyMedium, color = FocusColors.TextSecondary)
@@ -1963,6 +1997,7 @@ private fun SessionSetupScreen(
     onBack: () -> Unit,
 
     onRequestNotifications: () -> Unit,
+    onGrantVpn: () -> Unit,
 
     onStart: (Long, String, Int, Set<String>) -> Unit
 
@@ -2253,6 +2288,55 @@ private fun SessionSetupScreen(
                 }
             }
 
+            if (!ready) {
+                item {
+                    Card(
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = FocusColors.Amber.copy(alpha = 0.12f))
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("أذونات ناقصة", style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary)
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                "الجلسة لن تبدأ قبل منحها. اضغط «منح» بجانب كل إذن ناقص.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = FocusColors.TextSecondary
+                            )
+                            Spacer(Modifier.height(8.dp))
+                            if (!accessibilityOn) {
+                                PermissionRow(
+                                    title = "إذن الوصول (Accessibility)",
+                                    description = "يخفي التطبيق المقفل ويعيدك للرئيسية.",
+                                    granted = false,
+                                    required = true,
+                                    actionLabel = "منح",
+                                    onAction = { openAccessibilitySettings(context) }
+                                )
+                            }
+                            if (!vpnReady) {
+                                PermissionRow(
+                                    title = "إذن VPN",
+                                    description = "يقطع إنترنت التطبيقات المختارة.",
+                                    granted = false,
+                                    required = true,
+                                    actionLabel = "منح",
+                                    onAction = onGrantVpn
+                                )
+                            }
+                            if (!notificationsOn) {
+                                PermissionRow(
+                                    title = "إذن الإشعارات",
+                                    description = "يعرض الجلسة الجارية والمؤقّت.",
+                                    granted = false,
+                                    required = true,
+                                    actionLabel = "منح",
+                                    onAction = onRequestNotifications
+                                )
+                            }
+                        }
+                    }
+                }
+            }
             item {
 
                 Row(verticalAlignment = Alignment.CenterVertically) {

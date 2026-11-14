@@ -172,7 +172,7 @@ internal object AppUpdateManager {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL_ID, "تحديثات التطبيق", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "تنبيه عند توفر إصدار جديد من Focus Study"
+                    description = "تنبيه عند توفر إصدار جديد من مُنظِّم"
                 }
             )
             if (manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) return
@@ -188,7 +188,7 @@ internal object AppUpdateManager {
         val message = "الإصدار ${release.versionName} يضيف تحسينات جديدة. افتح التطبيق للتحديث من المتجر."
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle("تحديث جديد لـ Focus Study")
+            .setContentTitle("تحديث جديد لـ مُنظِّم")
             .setContentText(message)
             .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setContentIntent(openUpdates)

@@ -101,7 +101,7 @@ internal object PrayerReminderScheduler {
         val allowed = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
         if (allowed) manager.notify(NOTIFICATION, NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_stat_focus).setContentTitle("حان وقت صلاة $name")
-            .setContentText("تذكير من Focus Study حسب موقعك وطريقة الحساب المختارة")
+            .setContentText("تذكير من مُنظِّم حسب موقعك وطريقة الحساب المختارة")
             .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT).build())
         schedule(context)

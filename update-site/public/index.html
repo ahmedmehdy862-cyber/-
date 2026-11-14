@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0a1020">
-  <meta name="description" content="آخر تحديثات تطبيق Focus Study لتنظيم المذاكرة والتركيز.">
+  <meta name="description" content="آخر تحديثات تطبيق مُنظِّم لتنظيم المذاكرة والتركيز.">
   <link rel="icon" type="image/svg+xml" href="/brand.svg">
   <link rel="apple-touch-icon" href="/brand.svg">
-  <title>تحديثات Focus Study</title>
+  <title>تحديثات مُنظِّم</title>
   <style>
     :root{color-scheme:dark;--bg:#090e1a;--panel:#111a2c;--panel2:#16223a;--line:#293854;--ink:#f5f7ff;--muted:#a9b8d2;--blue:#65a0ff;--violet:#9a77ff;--mint:#7fe3c2;--amber:#ffd083;--radius:28px}
     *{box-sizing:border-box}
@@ -59,7 +59,7 @@
 <body>
   <div class="wrap">
     <header>
-      <div class="brand"><span class="logo"><img src="/brand.svg" alt=""></span><span>Focus Study</span></div>
+      <div class="brand"><span class="logo"><img src="/brand.svg" alt=""></span><span>مُنظِّم</span></div>
       <div class="online">صفحة التحديثات الرسمية <a class="admin-link" href="/admin/">الإدارة</a></div>
     </header>
     <main>
@@ -67,7 +67,7 @@
         <div>
           <span class="eyebrow">مساحة أفضل لمذاكرتك</span>
           <h1 id="title">كل تحديث يقرّبك من يوم دراسي أهدأ.</h1>
-          <p class="lead">نزّل آخر إصدار من Focus Study، وتعرّف على التحسينات الجديدة قبل ما ترجع لخطة مذاكرتك.</p>
+          <p class="lead">نزّل آخر إصدار من مُنظِّم، وتعرّف على التحسينات الجديدة قبل ما ترجع لخطة مذاكرتك.</p>
           <div class="actions">
             <a id="hero-store" class="button primary" href="#download" aria-disabled="true">رابط المتجر غير مربوط</a>
             <a class="button secondary" href="#how-to">طريقة التثبيت</a>
@@ -75,7 +75,7 @@
           <div id="status" class="status" role="status" aria-live="polite"></div>
         </div>
         <div class="art" aria-hidden="true">
-          <div class="orbit"><img class="shield" src="/brand-mark.svg" alt="شعار Focus Study"><span class="spark one">📚</span><span class="spark two">⚡</span></div>
+          <div class="orbit"><img class="shield" src="/brand-mark.svg" alt="شعار مُنظِّم"><span class="spark one">📚</span><span class="spark two">⚡</span></div>
         </div>
       </section>
 
@@ -91,12 +91,12 @@
 
       <h2 class="section-title">التحديث من المتجر</h2>
       <section id="how-to" class="steps">
-        <div class="step">اضغط «فتح صفحة المتجر» للانتقال إلى صفحة Focus Study الرسمية.</div>
+        <div class="step">اضغط «فتح صفحة المتجر» للانتقال إلى صفحة مُنظِّم الرسمية.</div>
         <div class="step">اضغط «تحديث» في المتجر لتثبيت الإصدار فوق التطبيق الحالي.</div>
         <div class="step">لا تحذف التطبيق قبل التحديث. بقاء بياناتك يتطلب تطابق الحزمة وتوقيع الإصدار.</div>
       </section>
     </main>
-    <footer><span>Focus Study · مساحة مذاكرة أكثر تركيزًا</span><span>نحافظ على مهامك عند تحديث التطبيق.</span></footer>
+    <footer><span>مُنظِّم · مساحة مذاكرة أكثر تركيزًا</span><span>نحافظ على مهامك عند تحديث التطبيق.</span></footer>
   </div>
   <script>
     const heroStore = document.getElementById('hero-store');
@@ -113,7 +113,7 @@
     fetch('/api/latest', { headers: { Accept: 'application/json' }, cache: 'no-store' })
       .then(response => { if (!response.ok) throw new Error('تعذر قراءة بيانات الإصدار.'); return response.json(); })
       .then(release => {
-        document.getElementById('version-name').textContent = `Focus Study ${release.versionName}`;
+        document.getElementById('version-name').textContent = `مُنظِّم ${release.versionName}`;
         const code = document.getElementById('version-code');
         code.textContent = `الإصدار ${release.versionCode}`;
         code.classList.remove('hidden');
