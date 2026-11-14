@@ -58,6 +58,15 @@ enum class Recurrence(val key: String, val label: String) {
  * [isDone] is kept for backward compatibility with the v1 schema and stays in sync with
  * [status] / accumulated focus minutes; [progress] is derived from minutes.
  */
+/** A task type; built-in rows keep stable ids so a rename never breaks stored tasks. */
+data class TaskType(
+    val id: String,
+    val name: String,
+    val sortOrder: Int = 0,
+    val archived: Boolean = false,
+    val builtIn: Boolean = false
+)
+
 data class StudyTask(
     val id: Long,
     val title: String,
@@ -68,6 +77,7 @@ data class StudyTask(
     val createdAt: Long,
     val description: String = "",
     val category: TaskCategory = TaskCategory.STUDY,
+    val typeId: String? = null,
     val priority: TaskPriority = TaskPriority.MEDIUM,
     val status: TaskStatus = TaskStatus.TODO,
     val startAt: Long? = null,

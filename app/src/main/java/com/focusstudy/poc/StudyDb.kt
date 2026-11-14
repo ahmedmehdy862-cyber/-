@@ -62,6 +62,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV4(db)
         migrateToV5(db)
         migrateToV6(db)
+        migrateToV7(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -70,6 +71,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 4) migrateToV4(db)
         if (oldVersion < 5) migrateToV5(db)
         if (oldVersion < 6) migrateToV6(db)
+        if (oldVersion < 7) migrateToV7(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -104,6 +106,159 @@ class StudyDb private constructor(context: Context) :
             """.trimIndent()
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_tasks_subject ON tasks(subject_id)")
+    }
+
+    /** v7 - user-editable task types, additive: existing tasks keep working unchanged. */
+    private fun migrateToV7(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS task_types(
+              id TEXT PRIMARY KEY,
+              name TEXT NOT NULL,
+              sort_order INTEGER NOT NULL DEFAULT 0,
+              archived INTEGER NOT NULL DEFAULT 0,
+              built_in INTEGER NOT NULL DEFAULT 0
+            )
+            """.trimIndent()
+        )
+        addColumnIfMissing(db, "tasks", "type_id", "TEXT")
+        seedTaskTypes(db)
+        db.execSQL(
+            """
+            UPDATE tasks SET type_id = CASE category
+                WHEN 'study' THEN 'study'
+                WHEN 'university' THEN 'study'
+                ELSE 'life' END
+            WHERE type_id IS NULL
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_tasks_type ON tasks(type_id)")
+    }
+
+    private fun seedTaskTypes(db: SQLiteDatabase) {
+        val builtIns = listOf(
+            "religious" to "ديني",
+            "study" to "دراسة",
+            "life" to "حياة",
+            "volunteering" to "تطوّع"
+        )
+        builtIns.forEachIndexed { index, (id, name) ->
+            db.execSQL(
+                "INSERT OR IGNORE INTO task_types(id, name, sort_order, archived, built_in) VALUES(?, ?, ?, 0, 1)",
+                arrayOf<Any?>(id, name, index)
+            )
+        }
+    }
+
+    // -------------------------------------------------------------- task types
+
+    fun taskTypes(includeArchived: Boolean = false): List<TaskType> {
+        val rows = ArrayList<TaskType>()
+        val where = if (includeArchived) "" else "WHERE archived = 0"
+        readableDatabase.rawQuery(
+            "SELECT id, name, sort_order, archived, built_in FROM task_types $where " +
+                "ORDER BY sort_order ASC, name COLLATE NOCASE",
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                rows.add(
+                    TaskType(
+                        id = cursor.getString(0),
+                        name = cursor.getString(1),
+                        sortOrder = cursor.getInt(2),
+                        archived = cursor.getInt(3) == 1,
+                        builtIn = cursor.getInt(4) == 1
+                    )
+                )
+            }
+        }
+        return rows
+    }
+
+    fun addTaskType(name: String): String {
+        val clean = name.trim()
+        require(clean.isNotEmpty()) { "اسم النوع مطلوب" }
+        val exists = readableDatabase.rawQuery(
+            "SELECT 1 FROM task_types WHERE name = ? COLLATE NOCASE LIMIT 1",
+            arrayOf(clean)
+        ).use { it.moveToFirst() }
+        require(!exists) { "هذا النوع موجود بالفعل" }
+        val id = "c_" + System.currentTimeMillis().toString(36)
+        val order = readableDatabase
+            .rawQuery("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM task_types", null)
+            .use { if (it.moveToFirst()) it.getInt(0) else 1 }
+        writableDatabase.insertOrThrow("task_types", null, ContentValues().apply {
+            put("id", id)
+            put("name", clean)
+            put("sort_order", order)
+            put("archived", 0)
+            put("built_in", 0)
+        })
+        return id
+    }
+
+    fun renameTaskType(id: String, name: String) {
+        val clean = name.trim()
+        require(clean.isNotEmpty()) { "اسم النوع مطلوب" }
+        writableDatabase.update(
+            "task_types",
+            ContentValues().apply { put("name", clean) },
+            "id = ?",
+            arrayOf(id)
+        )
+    }
+
+    fun setTaskTypeArchived(id: String, archived: Boolean) {
+        writableDatabase.update(
+            "task_types",
+            ContentValues().apply { put("archived", if (archived) 1 else 0) },
+            "id = ?",
+            arrayOf(id)
+        )
+    }
+
+    /** Swaps the type with its neighbour and renumbers the list so the order stays dense. */
+    fun moveTaskType(id: String, up: Boolean) {
+        val ordered = taskTypes(includeArchived = true)
+        val index = ordered.indexOfFirst { it.id == id }
+        if (index < 0) return
+        val swapWith = if (up) index - 1 else index + 1
+        if (swapWith !in ordered.indices) return
+        val reordered = ordered.toMutableList().apply {
+            val moved = removeAt(index)
+            add(swapWith, moved)
+        }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            reordered.forEachIndexed { position, type ->
+                db.execSQL(
+                    "UPDATE task_types SET sort_order = ? WHERE id = ?",
+                    arrayOf<Any?>(position, type.id)
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    /** Deletes a custom type; its tasks stay, they simply lose the label. */
+    fun deleteTaskType(id: String) {
+        val builtIn = readableDatabase.rawQuery(
+            "SELECT built_in FROM task_types WHERE id = ? LIMIT 1",
+            arrayOf(id)
+        ).use { if (it.moveToFirst()) it.getInt(0) == 1 else false }
+        require(!builtIn) { "لا يمكن حذف نوع أساسي" }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.execSQL("UPDATE tasks SET type_id = NULL WHERE type_id = ?", arrayOf<Any?>(id))
+            db.delete("task_types", "id = ?", arrayOf(id))
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
     }
 
     private fun migrateToV3(db: SQLiteDatabase) {
@@ -207,7 +362,8 @@ class StudyDb private constructor(context: Context) :
         dueAt: Long? = null,
         subjectId: Long? = null,
         notes: String = "",
-        recurrence: Recurrence = Recurrence.NONE
+        recurrence: Recurrence = Recurrence.NONE,
+        typeId: String? = null
     ): Long {
         require(title.isNotBlank()) { "Task title cannot be blank" }
         require(plannedMinutes in 1..720) { "Task duration must be between 1 and 720 minutes" }
@@ -229,6 +385,7 @@ class StudyDb private constructor(context: Context) :
             if (subjectId != null) put("subject_id", subjectId) else putNull("subject_id")
             put("notes", notes)
             put("recurrence", recurrence.key)
+            if (typeId != null) put("type_id", typeId) else putNull("type_id")
             put("completed_at", if (status == TaskStatus.DONE) now else null)
             put("sort_order", 0)
         }
@@ -254,6 +411,7 @@ class StudyDb private constructor(context: Context) :
             if (task.subjectId != null) put("subject_id", task.subjectId) else putNull("subject_id")
             put("notes", task.notes)
             put("recurrence", task.recurrence.key)
+            if (task.typeId != null) put("type_id", task.typeId) else putNull("type_id")
             if (completed) put("completed_at", task.completedAt ?: System.currentTimeMillis()) else putNull("completed_at")
             put("sort_order", task.sortOrder)
             if (task.originalDueAt != null) put("original_due_at", task.originalDueAt) else putNull("original_due_at")
@@ -313,6 +471,7 @@ class StudyDb private constructor(context: Context) :
             put("created_at", now)
             put("description", original.description)
             put("category", original.category.key)
+            if (original.typeId != null) put("type_id", original.typeId) else putNull("type_id")
             put("priority", original.priority.level)
             put("status", TaskStatus.TODO.key)
             put("start_at", original.startAt)
@@ -453,7 +612,7 @@ class StudyDb private constructor(context: Context) :
         val sql = """
             SELECT id, title, planned_minutes, done_minutes, is_done, blocked_packages, created_at,
                    description, category, priority, status, start_at, due_at, subject_id, notes,
-                   recurrence, completed_at, sort_order, original_due_at
+                   recurrence, completed_at, sort_order, original_due_at, type_id
             FROM tasks
             ${where.orEmpty()}
             ORDER BY is_done ASC, COALESCE(due_at, 9223372036854775807) ASC, created_at DESC
@@ -481,7 +640,8 @@ class StudyDb private constructor(context: Context) :
                         recurrence = Recurrence.from(cursor.getString(15)),
                         completedAt = cursor.nullableLong(16),
                         sortOrder = cursor.getInt(17),
-                        originalDueAt = cursor.nullableLong(18)
+                        originalDueAt = cursor.nullableLong(18),
+                        typeId = cursor.getString(19)
                     )
                 )
             }
@@ -556,6 +716,7 @@ class StudyDb private constructor(context: Context) :
             put("created_at", System.currentTimeMillis())
             put("description", original.description)
             put("category", original.category.key)
+            if (original.typeId != null) put("type_id", original.typeId) else putNull("type_id")
             put("priority", original.priority.level)
             put("status", TaskStatus.TODO.key)
             if (nextStartAt == null) putNull("start_at") else put("start_at", nextStartAt)
@@ -714,7 +875,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 6
+        private const val DB_VERSION = 7
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

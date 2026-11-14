@@ -558,6 +558,7 @@ private fun AppRoot(
                 }
 
                 "subjects" -> SubjectsScreen(onBack = { returnToPreviousTab() })
+                "task_types" -> TaskTypesScreen(onBack = { returnToPreviousTab() })
                 "calendar" -> StudyCalendarScreen(
                     onBack = { returnToPreviousTab() },
                     onStartTask = { taskId -> setupTaskId = taskId }
@@ -568,7 +569,8 @@ private fun AppRoot(
                     onSettings = { openSecondary("settings") },
                     onSupport = { openSecondary("support") },
                     onUpdates = { openSecondary("updates") },
-                    onPrayerTimes = { openSecondary("prayer_times") }
+                    onPrayerTimes = { openSecondary("prayer_times") },
+                    onTaskTypes = { openSecondary("task_types") }
                 )
                 "prayer_times" -> PrayerTimesScreen(onBack = { returnToPreviousTab() })
                 "updates" -> AppUpdatesScreen(onBack = { returnToPreviousTab() })
@@ -665,6 +667,13 @@ private fun TasksScreen(
     val subjectState by subjectViewModel.state.collectAsState()
     val subjectNames = remember(subjectState.subjects) { subjectState.subjects.associate { it.id to it.name } }
 
+    val typeViewModel: TaskTypesViewModel = viewModel()
+    val typeState by typeViewModel.state.collectAsState()
+    val typeNames = remember(typeState.types) {
+        typeState.types.filter { !it.archived }.associate { it.id to it.name }
+    }
+    var typeFilter by rememberSaveable { mutableStateOf<String?>(null) }
+
     val tasks = ui.tasks
 
     val totalMinutes = ui.totalMinutes
@@ -680,7 +689,7 @@ private fun TasksScreen(
     var taskQuery by rememberSaveable { mutableStateOf("") }
     var taskFilter by rememberSaveable { mutableStateOf(TaskListFilter.ALL) }
     var taskSort by rememberSaveable { mutableStateOf(TaskListSort.DEADLINE) }
-    val visibleTasks = remember(tasks, taskQuery, taskFilter, taskSort) {
+    val visibleTasks = remember(tasks, taskQuery, taskFilter, taskSort, typeFilter, typeNames) {
         val matchingTasks = tasks.filter { task ->
             val matchesFilter = when (taskFilter) {
                 TaskListFilter.ALL -> true
@@ -691,13 +700,15 @@ private fun TasksScreen(
                 TaskListFilter.COMPLETED -> task.isDone || task.status == TaskStatus.DONE
                 TaskListFilter.URGENT -> !task.isDone && task.status != TaskStatus.CANCELLED && task.priority == TaskPriority.URGENT
             }
+            val matchesType = typeFilter == null || task.typeId == typeFilter
             val query = taskQuery.trim()
             val matchesQuery = query.isEmpty() || task.title.contains(query, ignoreCase = true) ||
                 task.description.contains(query, ignoreCase = true) ||
                 task.notes.contains(query, ignoreCase = true) ||
                 task.category.label.contains(query, ignoreCase = true) ||
+                task.typeId?.let { typeNames[it]?.contains(query, ignoreCase = true) } == true ||
                 task.subjectId?.let { subjectNames[it]?.contains(query, ignoreCase = true) } == true
-            matchesFilter && matchesQuery
+            matchesFilter && matchesType && matchesQuery
         }
         when (taskSort) {
             TaskListSort.DEADLINE -> matchingTasks.sortedWith(
@@ -799,6 +810,22 @@ private fun TasksScreen(
 
         }
 
+        if (typeNames.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                TaskCategoryChip(selected = typeFilter == null, onSelect = { typeFilter = null }) { Text("كل الأنواع") }
+                typeNames.forEach { (id, name) ->
+                    TaskCategoryChip(
+                        selected = typeFilter == id,
+                        onSelect = { typeFilter = if (typeFilter == id) null else id }
+                    ) { Text(name) }
+                }
+            }
+        }
+
         if (dashboard) {
             Spacer(Modifier.height(12.dp))
             StudyCompanionCard(preferences, tasks)
@@ -884,6 +911,8 @@ private fun TasksScreen(
 
                     task = task,
 
+                    typeLabel = task.typeId?.let { typeNames[it] }.orEmpty(),
+
                     subjectName = task.subjectId?.let { subjectNames[it] },
 
                     accent = FocusColors.accents[index % FocusColors.accents.size],
@@ -943,9 +972,10 @@ private fun TasksScreen(
             onDismiss = { showAddDialog = false },
 
             subjects = subjectState.subjects,
-            onAdd = { title, minutes, category, priority, dueAtString, recurrence, notes, subjectId ->
+            types = typeState.types,
+            onAdd = { title, minutes, category, priority, dueAtString, recurrence, notes, subjectId, typeId ->
 
-                viewModel.add(title, minutes, category, priority, parseDueDateMillis(dueAtString), subjectId, notes.orEmpty(), recurrence) { showAddDialog = false }
+                viewModel.add(title, minutes, category, priority, parseDueDateMillis(dueAtString), subjectId, notes.orEmpty(), recurrence, typeId) { showAddDialog = false }
 
 
 
@@ -1118,7 +1148,8 @@ private fun MoreSectionsScreen(
     onSettings: () -> Unit,
     onSupport: () -> Unit,
     onUpdates: () -> Unit,
-    onPrayerTimes: () -> Unit
+    onPrayerTimes: () -> Unit,
+    onTaskTypes: () -> Unit
 ) {
     Column(
         Modifier
@@ -1131,6 +1162,7 @@ private fun MoreSectionsScreen(
         Text("أدوات تساعدك على التخطيط ومراجعة تقدمك وتخصيص تجربتك.", style = MaterialTheme.typography.bodyMedium, color = FocusColors.TextSecondary)
         Spacer(Modifier.height(16.dp))
         MoreSectionCard("الخطة الأسبوعية", "حوّل مهامك إلى جلسات مذاكرة قابلة للتنفيذ.", "↗", onPlanner)
+        MoreSectionCard("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes)
         MoreSectionCard("إحصاءاتي", "راجع وقت التركيز والمهام التي أنجزتها.", "◔", onAnalytics)
         MoreSectionCard("تخصيص التجربة", "اضبط اسمك وهدفك اليومي والتذكير والمظهر.", "⚙", onSettings)
         MoreSectionCard("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرًا محليًا.", "☾", onPrayerTimes)
@@ -1332,6 +1364,8 @@ private fun TaskCard(
 
     task: StudyTask,
 
+    typeLabel: String,
+
     subjectName: String?,
 
     accent: Color,
@@ -1472,7 +1506,7 @@ private fun TaskCard(
 
                 Text(
 
-                    text = (subjectName?.let { "$it · " } ?: "") + "${task.category.label} · ${task.priority.label}" +
+                    text = (subjectName?.let { "$it · " } ?: "") + "${typeLabel.ifBlank { task.category.label }} · ${task.priority.label}" +
                         (task.dueAt?.let { " · الموعد ${formatDueDate(it)}" } ?: "") +
                         (task.originalDueAt?.let { " · كان ${formatDueDate(it)}" } ?: ""),
 
@@ -3391,7 +3425,8 @@ private fun SessionScreen(
 private fun AddTaskDialog(
     onDismiss: () -> Unit,
     subjects: List<StudySubject>,
-    onAdd: (String, Int, TaskCategory, TaskPriority, String?, Recurrence, String?, Long?) -> Unit
+    types: List<TaskType>,
+    onAdd: (String, Int, TaskCategory, TaskPriority, String?, Recurrence, String?, Long?, String?) -> Unit
 ) {
 
     var title by rememberSaveable { mutableStateOf("") }
@@ -3408,6 +3443,8 @@ private fun AddTaskDialog(
     var notes by rememberSaveable { mutableStateOf("") }
 
     var recurrence by rememberSaveable { mutableStateOf(Recurrence.NONE) }
+    var typeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var expanded by rememberSaveable { mutableStateOf(false) }
 
 
 
@@ -3443,7 +3480,15 @@ private fun AddTaskDialog(
 
                 )
 
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(6.dp))
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)
+                ) {
+                    Text(if (expanded) "إخفاء الخيارات" else "خيارات إضافية (اختياري)")
+                }
+                if (expanded) {
+                Spacer(Modifier.height(6.dp))
                 OutlinedTextField(
                     value = minutesInput,
                     onValueChange = { value -> if (value.length <= 3 && value.all(Char::isDigit)) minutesInput = value },
@@ -3457,6 +3502,16 @@ private fun AddTaskDialog(
                 SubjectChooser(subjects = subjects, selectedId = subjectId, onSelect = { subjectId = it })
 
                 Spacer(Modifier.height(16.dp))
+                Text("النوع", style = MaterialTheme.typography.labelLarge)
+                Spacer(Modifier.height(8.dp))
+                Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TaskCategoryChip(selected = typeId == null, onSelect = { typeId = null }) { Text("بدون نوع") }
+                        types.filter { !it.archived }.forEach { type ->
+                            TaskCategoryChip(selected = typeId == type.id, onSelect = { typeId = type.id }) { Text(type.name) }
+                        }
+                    }
+                }
 
                 Text("التصنيف", style = MaterialTheme.typography.labelLarge)
 
@@ -3653,6 +3708,7 @@ private fun AddTaskDialog(
                     }
 
                 }
+                }
 
             }
 
@@ -3662,7 +3718,7 @@ private fun AddTaskDialog(
 
             TextButton(
 
-                onClick = { if (title.isNotBlank()) onAdd(title.trim(), minutesInput.toIntOrNull() ?: 30, category, priority, dueAtString, recurrence, notes, subjectId) },
+                onClick = { if (title.isNotBlank()) onAdd(title.trim(), minutesInput.toIntOrNull() ?: 30, category, priority, dueAtString, recurrence, notes, subjectId, typeId) },
 
                 enabled = title.isNotBlank() && minutesInput.toIntOrNull() in 1..720
 

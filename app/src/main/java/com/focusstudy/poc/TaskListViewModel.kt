@@ -54,6 +54,7 @@ class TaskListViewModel(application: Application) : AndroidViewModel(application
         subjectId: Long?,
         notes: String,
         recurrence: Recurrence,
+        typeId: String? = null,
         onSaved: () -> Unit = {}
     ) {
         viewModelScope.launch {
@@ -67,7 +68,8 @@ class TaskListViewModel(application: Application) : AndroidViewModel(application
                 dueAt = dueAt,
                 subjectId = subjectId,
                 notes = notes,
-                recurrence = recurrence
+                recurrence = recurrence,
+                typeId = typeId
             )
             SessionEngine.notifyTasksChanged()
             refresh()

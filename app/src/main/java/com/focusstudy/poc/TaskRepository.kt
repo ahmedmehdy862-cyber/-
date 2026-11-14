@@ -26,7 +26,8 @@ class TaskRepository private constructor(private val db: StudyDb) {
         dueAt: Long? = null,
         subjectId: Long? = null,
         notes: String = "",
-        recurrence: Recurrence = Recurrence.NONE
+        recurrence: Recurrence = Recurrence.NONE,
+        typeId: String? = null
     ): Long = io {
         db.insertTask(
             title = title,
@@ -38,7 +39,8 @@ class TaskRepository private constructor(private val db: StudyDb) {
             dueAt = dueAt,
             subjectId = subjectId,
             notes = notes,
-            recurrence = recurrence
+            recurrence = recurrence,
+            typeId = typeId
         )
     }
 
@@ -63,6 +65,18 @@ class TaskRepository private constructor(private val db: StudyDb) {
         io { db.setSubtaskDone(subtaskId, done) }
 
     suspend fun deleteSubtask(subtaskId: Long) = io { db.deleteSubtask(subtaskId) }
+
+    suspend fun taskTypes(includeArchived: Boolean = false) = io { db.taskTypes(includeArchived) }
+
+    suspend fun addTaskType(name: String) = io { db.addTaskType(name) }
+
+    suspend fun renameTaskType(id: String, name: String) = io { db.renameTaskType(id, name) }
+
+    suspend fun setTaskTypeArchived(id: String, archived: Boolean) = io { db.setTaskTypeArchived(id, archived) }
+
+    suspend fun moveTaskType(id: String, up: Boolean) = io { db.moveTaskType(id, up) }
+
+    suspend fun deleteTaskType(id: String) = io { db.deleteTaskType(id) }
 
     private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
 
