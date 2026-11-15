@@ -55,6 +55,7 @@ internal enum class TaskListFilter(val label: String) {
 }
 
 internal enum class TaskListSort(val label: String) {
+    SMART("الأذكى"),
     DEADLINE("موعد التسليم"),
     PRIORITY("الأولوية"),
     NEWEST("الأحدث"),

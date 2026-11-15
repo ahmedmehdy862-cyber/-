@@ -320,7 +320,8 @@ class MainActivity : ComponentActivity() {
 
                         onRequestNotifications = ::requestNotificationPermissionIfNeeded,
                         onGrantVpn = ::grantVpnConsent,
-                        openUpdatesInitially = intent?.getBooleanExtra(AppUpdateManager.EXTRA_OPEN_UPDATES, false) == true
+                        openUpdatesInitially = intent?.getBooleanExtra(AppUpdateManager.EXTRA_OPEN_UPDATES, false) == true,
+                        autoStartTaskId = intent?.getLongExtra(ReminderEngine.EXTRA_TASK_ID, 0L)?.takeIf { it > 0 }
 
                     )
 
@@ -433,7 +434,8 @@ private fun AppRoot(
 
     onRequestNotifications: () -> Unit,
     onGrantVpn: () -> Unit,
-    openUpdatesInitially: Boolean
+    openUpdatesInitially: Boolean,
+    autoStartTaskId: Long? = null
 
 ) {
 
@@ -449,6 +451,15 @@ private fun AppRoot(
     }
     LaunchedEffect(Unit) { PrayerReminderScheduler.schedule(context) }
 
+    LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
+
+        ReminderEngine.channels(context)
+
+        if (preferences.smartRemindersEnabled) ReminderEngine.refresh(context)
+        else StudyDb.get(context).pendingReminders(200).forEach { StudyDb.get(context).markReminderDone(it.id, "disabled") }
+
+    }
+
     val session by SessionEngine.active.collectAsState()
 
     val remaining by SessionEngine.remainingSeconds.collectAsState()
@@ -456,6 +467,20 @@ private fun AppRoot(
     val vpnLost by SessionEngine.vpnLost.collectAsState()
 
     var setupTaskId by remember { mutableStateOf<Long?>(null) }
+
+    var autoStartConsumed by rememberSaveable { mutableStateOf(false) }
+
+    LaunchedEffect(autoStartTaskId) {
+
+        if (!autoStartConsumed && autoStartTaskId != null && autoStartTaskId > 0L) {
+
+            setupTaskId = autoStartTaskId
+
+            autoStartConsumed = true
+
+        }
+
+    }
 
     var pickerTaskId by remember { mutableStateOf<Long?>(null) }
 
@@ -688,7 +713,25 @@ private fun TasksScreen(
     var editTarget by remember { mutableStateOf<StudyTask?>(null) }
     var taskQuery by rememberSaveable { mutableStateOf("") }
     var taskFilter by rememberSaveable { mutableStateOf(TaskListFilter.ALL) }
-    var taskSort by rememberSaveable { mutableStateOf(TaskListSort.DEADLINE) }
+    var taskSort by rememberSaveable { mutableStateOf(TaskListSort.SMART) }
+    var prayerTick by remember { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(Unit) { prayerTick = PrayerWindows.nextMoment(context)?.atMillis }
+
+    val examBySubject = remember(subjectState.subjects) {
+        subjectState.subjects.associate { it.id to it.nextExamAt }
+    }
+
+    val nextStep = remember(tasks, subjectNames, examBySubject, prayerTick) {
+        NextStepPlanner.pick(
+            tasks = tasks,
+            now = System.currentTimeMillis(),
+            subjectNames = subjectNames,
+            examBySubject = examBySubject,
+            prayerAtMillis = prayerTick
+        )
+    }
+
     val visibleTasks = remember(tasks, taskQuery, taskFilter, taskSort, typeFilter, typeNames) {
         val matchingTasks = tasks.filter { task ->
             val matchesFilter = when (taskFilter) {
@@ -719,24 +762,10 @@ private fun TasksScreen(
                 compareByDescending<StudyTask> { it.priority.level }
                     .thenBy { it.dueAt ?: Long.MAX_VALUE }
             )
+            TaskListSort.SMART -> SmartOrder.sort(matchingTasks, System.currentTimeMillis(), examBySubject)
             TaskListSort.NEWEST -> matchingTasks.sortedByDescending { it.createdAt }
             TaskListSort.TITLE -> matchingTasks.sortedBy { it.title.lowercase(Locale.getDefault()) }
         }
-    }
-    val nextTask = remember(tasks) {
-        val today = java.time.LocalDate.now()
-        tasks.filter { !it.isDone && it.status != TaskStatus.CANCELLED }
-            .minWithOrNull(
-                compareBy<StudyTask> { task ->
-                    when {
-                        task.dueAt.isBeforeLocalDate(today) -> 0
-                        task.priority == TaskPriority.URGENT -> 1
-                        task.dueAt.isOnLocalDate(today) -> 2
-                        task.dueAt != null -> 3
-                        else -> 4
-                    }
-                }.thenByDescending { it.priority.level }.thenBy { it.dueAt ?: Long.MAX_VALUE }
-            )
     }
 
     var accessibilityOn by remember {
@@ -745,7 +774,13 @@ private fun TasksScreen(
 
     }
 
-    LaunchedEffect(version) { viewModel.refresh() }
+    LaunchedEffect(version) {
+
+        viewModel.refresh()
+
+        if (preferences.smartRemindersEnabled) ReminderEngine.refresh(context)
+
+    }
 
     RefreshOnResume {
 
@@ -832,8 +867,17 @@ private fun TasksScreen(
             Spacer(Modifier.height(12.dp))
             HeroCard(totalMinutes = totalMinutes, tasks = tasks, preferences = preferences)
             Spacer(Modifier.height(14.dp))
-            if (nextTask != null) {
-                NextStepCard(task = nextTask, onStart = { onOpenSetup(nextTask.id) })
+            if (nextStep != null) {
+                nextStep?.let { step ->
+                    NextStepCard(
+                        step = step,
+                        onStart = { onOpenSetup(step.task.id) },
+                        onSnooze = {
+                            val base = maxOf(step.task.dueAt ?: System.currentTimeMillis(), System.currentTimeMillis())
+                            viewModel.reschedule(step.task.id, base + 60 * 60 * 1000L)
+                        }
+                    )
+                }
             } else {
                 DashboardEmptyStep(onAddTask = { showAddDialog = true })
             }
@@ -1104,7 +1148,9 @@ private fun TasksScreen(
 
 @Composable
 
-private fun NextStepCard(task: StudyTask, onStart: () -> Unit) {
+private fun NextStepCard(step: NextStep, onStart: () -> Unit, onSnooze: () -> Unit) {
+
+    val task = step.task
     Card(
         colors = CardDefaults.cardColors(containerColor = FocusColors.Surface),
         shape = RoundedCornerShape(22.dp)
@@ -1118,12 +1164,20 @@ private fun NextStepCard(task: StudyTask, onStart: () -> Unit) {
                 Spacer(Modifier.height(3.dp))
                 Text(task.title, style = MaterialTheme.typography.titleSmall, maxLines = 1)
                 Text(
-                    "${task.remainingMinutes} دقيقة متبقية · ${task.priority.label}",
+                    "لماذا الآن؟ ${step.reason}",
                     color = FocusColors.TextSecondary,
                     style = MaterialTheme.typography.bodySmall
                 )
+                Text(
+                    "${step.suggestedMinutes} دقيقة مقترحة · ${task.remainingMinutes} متبقية · ${task.priority.label}",
+                    color = FocusColors.TextMuted,
+                    style = MaterialTheme.typography.labelSmall
+                )
             }
-            TextButton(onClick = onStart) { Text("ابدأ") }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onSnooze) { Text("أجّل") }
+                TextButton(onClick = onStart) { Text("ابدأ") }
+            }
         }
     }
 }

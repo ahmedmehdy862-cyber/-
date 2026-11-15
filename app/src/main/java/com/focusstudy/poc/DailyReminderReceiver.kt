@@ -35,7 +35,14 @@ internal object StudyNotificationScheduler {
 
     fun update(context: Context, preferences: FocusPreferences) {
         cancelLegacyReminder(context)
-        scheduleNextTaskNudge(context)
+        // The smart reminder engine owns task notifications unless the user asks for the classic cadence.
+        if (preferences.smartRemindersEnabled && !preferences.legacyReminders) {
+            (context.getSystemService(Context.ALARM_SERVICE) as AlarmManager).cancel(
+                pendingIntent(context, ACTION_TASK_NUDGE, TASK_REQUEST)
+            )
+        } else {
+            scheduleNextTaskNudge(context)
+        }
         scheduleDaily(
             context,
             ACTION_MORNING,
@@ -247,6 +254,8 @@ class FocusBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
         if (intent?.action in setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_DATE_CHANGED)) {
             StudyNotificationScheduler.update(context, FocusPreferences.load(context))
+            ReminderEngine.channels(context)
+            ReminderEngine.refresh(context)
             PrayerReminderScheduler.schedule(context)
             AppUpdateManager.schedule(context)
         }

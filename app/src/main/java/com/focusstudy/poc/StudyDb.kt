@@ -63,6 +63,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV5(db)
         migrateToV6(db)
         migrateToV7(db)
+        migrateToV8(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -72,6 +73,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 5) migrateToV5(db)
         if (oldVersion < 6) migrateToV6(db)
         if (oldVersion < 7) migrateToV7(db)
+        if (oldVersion < 8) migrateToV8(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -261,6 +263,41 @@ class StudyDb private constructor(context: Context) :
         }
     }
 
+    /**
+     * v8 - reminder engine state, additive.
+     *
+     * `reminders` keeps the alarm schedule per task so it can be rebuilt after a reboot;
+     * `notification_log` records delivery and the user's action for the adaptive policy.
+     */
+    private fun migrateToV8(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS reminders(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              task_id INTEGER NOT NULL,
+              kind TEXT NOT NULL,
+              fire_at INTEGER NOT NULL,
+              state TEXT NOT NULL DEFAULT 'pending',
+              created_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS notification_log(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              kind TEXT NOT NULL,
+              task_id INTEGER,
+              scheduled_at INTEGER NOT NULL,
+              delivered_at INTEGER,
+              action TEXT NOT NULL DEFAULT ''
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_reminders_fire ON reminders(state, fire_at)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_notification_log_time ON notification_log(delivered_at)")
+    }
+
     private fun migrateToV3(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -349,6 +386,104 @@ class StudyDb private constructor(context: Context) :
     }
 
     // ---------------------------------------------------------------- tasks
+
+    // ------------------------------------------------------------- reminders
+
+    /** Replaces every pending reminder of a task with the freshly computed schedule. */
+    fun replaceReminders(taskId: Long, schedule: List<Pair<String, Long>>) {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("reminders", "task_id = ?", arrayOf(taskId.toString()))
+            val now = System.currentTimeMillis()
+            for ((kind, fireAt) in schedule) {
+                db.execSQL(
+                    "INSERT INTO reminders(task_id, kind, fire_at, state, created_at) VALUES(?, ?, ?, 'pending', ?)",
+                    arrayOf<Any?>(taskId, kind, fireAt, now)
+                )
+            }
+            db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    fun pendingReminders(limit: Int = 64): List<StoredReminder> {
+        val rows = ArrayList<StoredReminder>()
+        readableDatabase.rawQuery(
+            "SELECT id, task_id, kind, fire_at FROM reminders WHERE state = 'pending' ORDER BY fire_at ASC LIMIT ?",
+            arrayOf(limit.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                rows += StoredReminder(cursor.getLong(0), cursor.getLong(1), cursor.getString(2), cursor.getLong(3))
+            }
+        }
+        return rows
+    }
+
+    fun markReminderDone(reminderId: Long, state: String = "fired") {
+        writableDatabase.execSQL("UPDATE reminders SET state = ? WHERE id = ?", arrayOf<Any?>(state, reminderId))
+    }
+
+    fun dropRemindersForTask(taskId: Long) {
+        writableDatabase.delete("reminders", "task_id = ?", arrayOf(taskId.toString()))
+    }
+
+    fun logNotification(kind: String, taskId: Long?, scheduledAt: Long, deliveredAt: Long?, action: String) {
+        writableDatabase.execSQL(
+            "INSERT INTO notification_log(kind, task_id, scheduled_at, delivered_at, action) VALUES(?, ?, ?, ?, ?)",
+            arrayOf<Any?>(kind, taskId, scheduledAt, deliveredAt, action)
+        )
+    }
+
+    fun logAction(notificationId: Long, action: String) {
+        writableDatabase.execSQL("UPDATE notification_log SET action = ? WHERE id = ?", arrayOf<Any?>(action, notificationId))
+    }
+
+    fun deliveredCountSince(from: Long, until: Long = System.currentTimeMillis()): Int =
+        readableDatabase.rawQuery(
+            "SELECT COUNT(*) FROM notification_log WHERE delivered_at IS NOT NULL AND delivered_at >= ? AND delivered_at <= ?",
+            arrayOf(from.toString(), until.toString())
+        ).use { if (it.moveToFirst()) it.getInt(0) else 0 }
+
+    fun lastNonCriticalDelivery(): Long? =
+        readableDatabase.rawQuery(
+            "SELECT MAX(delivered_at) FROM notification_log WHERE delivered_at IS NOT NULL AND kind IN ('task_due','task_overdue','companion','pledge')",
+            null
+        ).use { if (it.moveToFirst() && !it.isNull(0)) it.getLong(0) else null }
+
+    /** Consecutive ignored notifications, newest first; any interaction resets the streak. */
+    fun ignoredStreak(): Int {
+        var streak = 0
+        readableDatabase.rawQuery(
+            "SELECT action FROM notification_log WHERE delivered_at IS NOT NULL ORDER BY delivered_at DESC LIMIT 12",
+            null
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                val action = cursor.getString(0).orEmpty()
+                if (action.isBlank() || action == ACTION_IGNORED) streak++ else break
+            }
+        }
+        return streak
+    }
+
+    fun notificationsSince(from: Long): List<NotificationRecord> {
+        val rows = ArrayList<NotificationRecord>()
+        readableDatabase.rawQuery(
+            "SELECT kind, scheduled_at, delivered_at, action FROM notification_log WHERE delivered_at >= ? ORDER BY delivered_at DESC",
+            arrayOf(from.toString())
+        ).use { cursor ->
+            while (cursor.moveToNext()) {
+                rows += NotificationRecord(
+                    kind = cursor.getString(0),
+                    scheduledAt = cursor.getLong(1),
+                    deliveredAt = cursor.nullableLong(2),
+                    action = cursor.getString(3).orEmpty()
+                )
+            }
+        }
+        return rows
+    }
 
     fun insertTask(
         title: String,
@@ -875,7 +1010,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 7
+        private const val DB_VERSION = 8
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

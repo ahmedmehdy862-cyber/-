@@ -20,10 +20,18 @@ data class FocusPreferences(
     val morningMessageEnabled: Boolean = true,
     val eveningMessageEnabled: Boolean = true,
     val morningMessageHour: Int = 8,
-    val eveningMessageHour: Int = 20
+    val eveningMessageHour: Int = 20,
+    val tonePreference: TonePreference = TonePreference.BALANCED,
+    val smartRemindersEnabled: Boolean = true,
+    val notificationDensity: NotificationDensity = NotificationDensity.BALANCED,
+    val quietHoursEnabled: Boolean = true,
+    val leadMinutes: Int = 30,
+    val legacyReminders: Boolean = false,
+    val quietStartHour: Int = 23,
+    val quietEndHour: Int = 7
 ) {
     companion object {
-        private const val FILE = "focus_study_preferences"
+        internal const val FILE = "focus_study_preferences"
 
         fun load(context: Context): FocusPreferences {
             val prefs = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
@@ -48,7 +56,15 @@ data class FocusPreferences(
                 morningMessageEnabled = prefs.getBoolean("morning_message_enabled", true),
                 eveningMessageEnabled = prefs.getBoolean("evening_message_enabled", true),
                 morningMessageHour = prefs.getInt("morning_message_hour", 8).coerceIn(6, 11),
-                eveningMessageHour = prefs.getInt("evening_message_hour", 20).coerceIn(17, 23)
+                eveningMessageHour = prefs.getInt("evening_message_hour", 20).coerceIn(17, 23),
+                tonePreference = TonePreference.from(prefs.getString("tone_preference", "balanced")),
+                smartRemindersEnabled = prefs.getBoolean("smart_reminders_enabled", true),
+                notificationDensity = NotificationDensity.from(prefs.getString("notification_density", "balanced")),
+                quietHoursEnabled = prefs.getBoolean("quiet_hours_enabled", true),
+                leadMinutes = prefs.getInt("reminder_lead_minutes", 30).coerceIn(5, 120),
+                legacyReminders = prefs.getBoolean("legacy_reminders", false),
+                quietStartHour = prefs.getInt("quiet_start_hour", 23).coerceIn(0, 23),
+                quietEndHour = prefs.getInt("quiet_end_hour", 7).coerceIn(0, 23)
             )
         }
 
@@ -72,6 +88,14 @@ data class FocusPreferences(
                 .putBoolean("evening_message_enabled", value.eveningMessageEnabled)
                 .putInt("morning_message_hour", value.morningMessageHour.coerceIn(6, 11))
                 .putInt("evening_message_hour", value.eveningMessageHour.coerceIn(17, 23))
+                .putString("tone_preference", value.tonePreference.key)
+                .putBoolean("smart_reminders_enabled", value.smartRemindersEnabled)
+                .putString("notification_density", value.notificationDensity.key)
+                .putBoolean("quiet_hours_enabled", value.quietHoursEnabled)
+                .putInt("reminder_lead_minutes", value.leadMinutes.coerceIn(5, 120))
+                .putBoolean("legacy_reminders", value.legacyReminders)
+                .putInt("quiet_start_hour", value.quietStartHour.coerceIn(0, 23))
+                .putInt("quiet_end_hour", value.quietEndHour.coerceIn(0, 23))
                 .apply()
         }
     }

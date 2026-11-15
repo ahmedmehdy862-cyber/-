@@ -199,6 +199,14 @@ internal fun PersonalizationScreen(
     var eveningEnabled by rememberSaveable(current.eveningMessageEnabled) { mutableStateOf(current.eveningMessageEnabled) }
     var morningHour by rememberSaveable(current.morningMessageHour) { mutableStateOf(current.morningMessageHour) }
     var eveningHour by rememberSaveable(current.eveningMessageHour) { mutableStateOf(current.eveningMessageHour) }
+    var tone by rememberSaveable(current.tonePreference) { mutableStateOf(current.tonePreference) }
+    var density by rememberSaveable(current.notificationDensity) { mutableStateOf(current.notificationDensity) }
+    var smartReminders by rememberSaveable(current.smartRemindersEnabled) { mutableStateOf(current.smartRemindersEnabled) }
+    var quietHours by rememberSaveable(current.quietHoursEnabled) { mutableStateOf(current.quietHoursEnabled) }
+    var quietStart by rememberSaveable(current.quietStartHour) { mutableStateOf(current.quietStartHour) }
+    var quietEnd by rememberSaveable(current.quietEndHour) { mutableStateOf(current.quietEndHour) }
+    var lead by rememberSaveable(current.leadMinutes) { mutableStateOf(current.leadMinutes) }
+    var legacyReminders by rememberSaveable(current.legacyReminders) { mutableStateOf(current.legacyReminders) }
     val context = LocalContext.current
     val notificationsAllowed = android.os.Build.VERSION.SDK_INT < 33 ||
         androidx.core.content.ContextCompat.checkSelfPermission(
@@ -274,6 +282,67 @@ internal fun PersonalizationScreen(
                 }
             }
             item {
+                PreferenceCard(
+                    title = "نبرة التطبيق",
+                    description = "تحدد أسلوب الرسائل: موقّر في الصلاة والامتحان واليوم الصعب، وأخف في الإنجاز والصباح."
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TonePreference.entries.forEach { option ->
+                            FilterChip(
+                                selected = tone == option,
+                                onClick = { tone = option },
+                                label = { Text(option.label) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Text("مثال: ${Voice.render(VoiceScene.MORNING, Persona.from(companionStyle), tone.ceiling, mapOf("name" to name.ifBlank { "أحمد" }, "count" to "3", "task" to "مراجعة الفيزياء"))}", color = FocusColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                }
+            }
+            item {
+                PreferenceCard(
+                    title = "الإشعارات الذكية",
+                    description = "تذكير واحد لكل مهمة قبل موعدها، يتأجل تلقائيًا في الصلاة والجلسة وساعات الهدوء."
+                ) {
+                    PreferenceSwitchRow("التذكيرات الذكية", "بديل تذكير الساعتين؛ يعرض سبب كل تذكير ويتعلم من تجاهلك.", smartReminders) { smartReminders = it }
+                    if (smartReminders) {
+                        Text("كثافة التنبيه اليومي: ${density.label} (${density.dailyBudget} كحد أقصى)", color = FocusColors.TextSecondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            NotificationDensity.entries.forEach { option ->
+                                FilterChip(
+                                    selected = density == option,
+                                    onClick = { density = option },
+                                    label = { Text(option.label) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(8.dp))
+                        Text("التذكير قبل الموعد", color = FocusColors.TextSecondary)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            listOf(15, 30, 60).forEach { minutes ->
+                                FilterChip(
+                                    selected = lead == minutes,
+                                    onClick = { lead = minutes },
+                                    label = { Text("$minutes د") }
+                                )
+                            }
+                        }
+                        PreferenceSwitchRow("ساعات الهدوء", "لا تصل التنبيهات غير العاجلة في هذه الساعات.", quietHours) { quietHours = it }
+                        if (quietHours) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                TextButton(onClick = {
+                                    TimePickerDialog(context, { _, hour, _ -> quietStart = hour }, quietStart, 0, true).show()
+                                }) { Text("من ${String.format(java.util.Locale.US, "%02d:00", quietStart)}") }
+                                TextButton(onClick = {
+                                    TimePickerDialog(context, { _, hour, _ -> quietEnd = hour }, quietEnd, 0, true).show()
+                                }) { Text("إلى ${String.format(java.util.Locale.US, "%02d:00", quietEnd)}") }
+                            }
+                        }
+                    }
+                    PreferenceSwitchRow("التنبيهات الكلاسيكية", "تذكير كل ساعتين من 9 صباحًا إلى 9 مساءً كما كان.", legacyReminders) { legacyReminders = it }
+                }
+            }
+            item {
                 PreferenceCard(title = "التطبيقات الثابتة", description = "تُضاف تلقائيًا لكل جلسة، ويمكنك اختيار تطبيقات أخرى لكل مهمة.") {
                     Text("${current.permanentBlockedPackages.size} تطبيق محفوظ", color = FocusColors.TextSecondary)
                     Spacer(Modifier.height(8.dp))
@@ -328,7 +397,15 @@ internal fun PersonalizationScreen(
                     morningMessageEnabled = morningEnabled,
                     eveningMessageEnabled = eveningEnabled,
                     morningMessageHour = morningHour,
-                    eveningMessageHour = eveningHour
+                    eveningMessageHour = eveningHour,
+                    tonePreference = tone,
+                    notificationDensity = density,
+                    smartRemindersEnabled = smartReminders,
+                    quietHoursEnabled = quietHours,
+                    quietStartHour = quietStart,
+                    quietEndHour = quietEnd,
+                    leadMinutes = lead,
+                    legacyReminders = legacyReminders
                 ))
                 onBack()
             },
