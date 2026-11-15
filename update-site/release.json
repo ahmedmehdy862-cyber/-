@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 16,
-  "versionName": "0.15.0",
+  "versionCode": 17,
+  "versionName": "0.16.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.15.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.16.0/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "هوية بصرية جديدة: شعار مُنظّم بلوني الكحلي والتركوازي، ولوحة ألوان موحّدة في التطبيق والأيقونة والإشعارات وموقع التحديثات."
+  "releaseNotes": "محرك تذكير ذكي: تذكير واحد لكل مهمة بسبب ظاهر، يتأجل في الصلاة والجلسة وساعات الهدوء، بأزرار «تمّ» و«أجّل» و«ابدأ تركيز»، وخطوة تالية تشرح لماذا هي الآن، وترتيب «الأذكى»، ونبرة تطبيق تختارها."
 }
