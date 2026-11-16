@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 18,
-  "versionName": "0.16.1",
+  "versionCode": 19,
+  "versionName": "0.16.2",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.16.1/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.16.2/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "إصلاح: كان التطبيق ينهار عند أول رسالة نبرة (تخصيص التجربة أو تذكير) بسبب تعبير نمطي لا يقبله أندرويد. وأُصلح تكدّس منبهات التذكير بعد كل إعادة جدولة. محرك التذكير صار يعمل فعليًا على الجهاز: إشعار لكل مهمة، تأجيل في الصلاة والجلسة والهدوء، وأزرار «تمّ» و«أجّل» و«ابدأ تركيز»."
+  "releaseNotes": "جديد: اكتب المهمة بجملة واحدة («راجع الفيزياء بكرة 5 العصر ساعة عاجل») فيفهم التاريخ والساعة والمدة والأولوية، ويطبقها بزر واحد. وأُصلح انهيار النبرة وتكدّس المنبهات في 0.16.1. صفحة الخصوصية صارت متاحة على موقع التحديثات."
 }
