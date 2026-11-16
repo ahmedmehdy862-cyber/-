@@ -2415,20 +2415,26 @@ private fun SessionSetupScreen(
                             if (!vpnReady) {
                                 PermissionRow(
                                     title = "إذن VPN",
-                                    description = "يقطع إنترنت التطبيقات المختارة.",
+                                    description = consentDescription(
+                                        "يقطع إنترنت التطبيقات المختارة.",
+                                        consentChanges[ConsentKey.VPN]
+                                    ),
                                     granted = false,
                                     required = true,
-                                    actionLabel = "منح",
+                                    actionLabel = consentActionLabel(consentChanges[ConsentKey.VPN]),
                                     onAction = onGrantVpn
                                 )
                             }
                             if (!notificationsOn) {
                                 PermissionRow(
                                     title = "إذن الإشعارات",
-                                    description = "يعرض الجلسة الجارية والمؤقّت.",
+                                    description = consentDescription(
+                                        "يعرض الجلسة الجارية والمؤقّت.",
+                                        consentChanges[ConsentKey.NOTIFICATIONS]
+                                    ),
                                     granted = false,
                                     required = true,
-                                    actionLabel = "منح",
+                                    actionLabel = consentActionLabel(consentChanges[ConsentKey.NOTIFICATIONS]),
                                     onAction = onRequestNotifications
                                 )
                             }

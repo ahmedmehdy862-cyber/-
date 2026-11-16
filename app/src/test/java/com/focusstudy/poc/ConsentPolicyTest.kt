@@ -10,34 +10,34 @@ import org.junit.Test
 class ConsentPolicyTest {
 
     @Test fun firstGrantIsNotRevocation() {
-        assertEquals(ConsentPolicy.Change.NEWLY_GRANTED, ConsentPolicy.classify(null, true))
+        assertEquals(ConsentPolicy.Change.NEWLY_GRANTED, ConsentPolicy.classify(everGranted = false, actual = true))
     }
 
     @Test fun neverGrantedStaysQuiet() {
-        assertEquals(ConsentPolicy.Change.NEVER_GRANTED, ConsentPolicy.classify(null, false))
+        assertEquals(ConsentPolicy.Change.NEVER_GRANTED, ConsentPolicy.classify(everGranted = false, actual = false))
         assertNull(ConsentPolicy.hint(ConsentPolicy.Change.NEVER_GRANTED))
     }
 
     @Test fun stillGrantedNeedsNothing() {
-        assertEquals(ConsentPolicy.Change.KEPT, ConsentPolicy.classify(true, true))
+        assertEquals(ConsentPolicy.Change.KEPT, ConsentPolicy.classify(everGranted = true, actual = true))
         assertNull(ConsentPolicy.hint(ConsentPolicy.Change.KEPT))
         assertFalse(ConsentPolicy.wasRevokedBySystem(ConsentPolicy.Change.KEPT))
     }
 
     @Test fun grantedThenMissingIsExplainedAsSystemRevocation() {
-        val change = ConsentPolicy.classify(true, false)
+        val change = ConsentPolicy.classify(everGranted = true, actual = false)
         assertEquals(ConsentPolicy.Change.REVOKED, change)
         assertTrue(ConsentPolicy.wasRevokedBySystem(change))
         assertNotNull(ConsentPolicy.hint(change))
     }
 
     @Test fun dismissedPermissionIsNotReportedAsRevoked() {
-        assertEquals(ConsentPolicy.Change.NEVER_GRANTED, ConsentPolicy.classify(false, false))
+        assertEquals(ConsentPolicy.Change.NEVER_GRANTED, ConsentPolicy.classify(everGranted = false, actual = false))
         assertFalse(ConsentPolicy.wasRevokedBySystem(ConsentPolicy.Change.NEVER_GRANTED))
     }
 
     @Test fun regrantedAfterRevocationCountsAsKept() {
-        assertEquals(ConsentPolicy.Change.KEPT, ConsentPolicy.classify(true, true))
+        assertEquals(ConsentPolicy.Change.KEPT, ConsentPolicy.classify(everGranted = true, actual = true))
     }
 
     @Test fun snapshotMissingListCoversEveryDeniedPermission() {
@@ -73,5 +73,10 @@ class ConsentPolicyTest {
         assertEquals("إعادة التفعيل", consentActionLabel(ConsentPolicy.Change.REVOKED))
         assertEquals("منح", consentActionLabel(ConsentPolicy.Change.NEVER_GRANTED))
         assertEquals("منح", consentActionLabel(null))
+    }
+
+    @Test fun historySurvivesRevocation() {
+        // Once granted, a later revocation is reported as REVOKED even after the flag is stored as false.
+        assertEquals(ConsentPolicy.Change.REVOKED, ConsentPolicy.classify(everGranted = true, actual = false))
     }
 }

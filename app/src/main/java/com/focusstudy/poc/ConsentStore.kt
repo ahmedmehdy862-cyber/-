@@ -55,10 +55,14 @@ object ConsentPolicy {
 
     enum class Change { KEPT, REVOKED, NEVER_GRANTED, NEWLY_GRANTED }
 
-    fun classify(savedGranted: Boolean?, actual: Boolean): Change = when {
-        savedGranted == null -> if (actual) Change.NEWLY_GRANTED else Change.NEVER_GRANTED
-        savedGranted && actual -> Change.KEPT
-        savedGranted && !actual -> Change.REVOKED
+    /**
+     * @param everGranted true when this permission was granted at any point in the past,
+     * even if a later update turned it off.
+     */
+    fun classify(everGranted: Boolean, actual: Boolean): Change = when {
+        actual && !everGranted -> Change.NEWLY_GRANTED
+        actual -> Change.KEPT
+        everGranted -> Change.REVOKED
         else -> Change.NEVER_GRANTED
     }
 
@@ -104,11 +108,15 @@ object ConsentStore {
         val changes = linkedMapOf<ConsentKey, ConsentPolicy.Change>()
         snapshot.asMap().forEach { (key, actual) ->
             val stored = saved[key.storage]
-            val change = ConsentPolicy.classify(stored?.granted, actual)
+            val everGranted = actual || (stored?.lastGrantedAt ?: 0L) > 0L
+            val lastGrantedAt = if (actual) now else stored?.lastGrantedAt ?: 0L
+            val change = ConsentPolicy.classify(everGranted = everGranted, actual = actual)
             changes[key] = change
             // Only rewrite when something changed, so an ordinary open costs no writes.
-            if (change != ConsentPolicy.Change.KEPT || stored?.version != ConsentPolicy.VERSION) {
-                db.saveConsent(key.storage, actual, ConsentPolicy.VERSION, now)
+            val sameState = stored != null && stored.granted == actual &&
+                stored.version == ConsentPolicy.VERSION && stored.lastGrantedAt == lastGrantedAt
+            if (!sameState) {
+                db.saveConsent(key.storage, actual, ConsentPolicy.VERSION, now, lastGrantedAt)
             }
         }
         return changes
@@ -117,7 +125,8 @@ object ConsentStore {
     fun changes(context: Context): Map<ConsentKey, ConsentPolicy.Change> {
         val saved = StudyDb.get(context).consents().associateBy { it.key }
         return snapshot(context).asMap().mapValues { (key, actual) ->
-            ConsentPolicy.classify(saved[key.storage]?.granted, actual)
+            val everGranted = actual || (saved[key.storage]?.lastGrantedAt ?: 0L) > 0L
+            ConsentPolicy.classify(everGranted = everGranted, actual = actual)
         }
     }
 

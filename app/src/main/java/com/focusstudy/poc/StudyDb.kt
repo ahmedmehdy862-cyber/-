@@ -65,6 +65,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV7(db)
         migrateToV8(db)
         migrateToV9(db)
+        migrateToV10(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -76,6 +77,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 7) migrateToV7(db)
         if (oldVersion < 8) migrateToV8(db)
         if (oldVersion < 9) migrateToV9(db)
+        if (oldVersion < 10) migrateToV10(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -387,28 +389,51 @@ class StudyDb private constructor(context: Context) :
             )
             """.trimIndent()
         )
+        // Kept after revocation: without it the app cannot tell "لم يُمنح قط" from "أوقفه النظام".
+        addColumnIfMissing(db, "consents", "last_granted_at", "INTEGER NOT NULL DEFAULT 0")
     }
 
-    data class StoredConsent(val key: String, val granted: Boolean, val version: Int, val at: Long)
+    /**
+     * v10 - the consents table learned to remember that a permission was granted once.
+     *
+     * 0.16.3 shipped v9 without `last_granted_at`, so installs already on v9 need this
+     * separate step; folding the column into migrateToV9 alone would never run for them.
+     */
+    private fun migrateToV10(db: SQLiteDatabase) {
+        addColumnIfMissing(db, "consents", "last_granted_at", "INTEGER NOT NULL DEFAULT 0")
+    }
+
+    data class StoredConsent(
+        val key: String,
+        val granted: Boolean,
+        val version: Int,
+        val at: Long,
+        val lastGrantedAt: Long
+    )
 
     /** Upserts one permission state; the row keeps the last time it was seen in that state. */
-    fun saveConsent(key: String, granted: Boolean, version: Int, at: Long) {
+    fun saveConsent(key: String, granted: Boolean, version: Int, at: Long, lastGrantedAt: Long) {
         writableDatabase.execSQL(
-            "INSERT INTO consents(key, granted, version, at) VALUES(?,?,?,?) " +
-                "ON CONFLICT(key) DO UPDATE SET granted=excluded.granted, version=excluded.version, at=excluded.at",
-            arrayOf(key, if (granted) 1 else 0, version, at)
+            "INSERT INTO consents(key, granted, version, at, last_granted_at) VALUES(?,?,?,?,?) " +
+                "ON CONFLICT(key) DO UPDATE SET granted=excluded.granted, version=excluded.version, " +
+                "at=excluded.at, last_granted_at=excluded.last_granted_at",
+            arrayOf(key, if (granted) 1 else 0, version, at, lastGrantedAt)
         )
     }
 
     fun consents(): List<StoredConsent> {
         val out = mutableListOf<StoredConsent>()
-        readableDatabase.rawQuery("SELECT key, granted, version, at FROM consents", null).use { cursor ->
+        readableDatabase.rawQuery(
+            "SELECT key, granted, version, at, last_granted_at FROM consents",
+            null
+        ).use { cursor ->
             while (cursor.moveToNext()) {
                 out += StoredConsent(
                     key = cursor.getString(0),
                     granted = cursor.getInt(1) == 1,
                     version = cursor.getInt(2),
-                    at = cursor.getLong(3)
+                    at = cursor.getLong(3),
+                    lastGrantedAt = cursor.getLong(4)
                 )
             }
         }
@@ -1065,7 +1090,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 9
+        private const val DB_VERSION = 10
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 
