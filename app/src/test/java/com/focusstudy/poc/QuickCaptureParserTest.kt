@@ -47,4 +47,70 @@ class QuickCaptureParserTest {
     @Test fun emptyInput() = assertEquals("", p("   ").title)
     @Test fun saturdayFromSunday() = assertEquals(LocalDate.of(2026, 11, 21), p("درس السبت").date)
     @Test fun bareSmallHourDefaultsToAfternoon() = assertEquals(15, p("اجتماع الساعة 3").hour)
+
+    // ---- additional coverage added while verifying the bundle against the shipped parser
+    @Test fun weekdayNameGoesToNextOccurrence() {
+        val r = p("مراجعة الرياضيات الخميس")
+        // الأحد 2026-11-15 -> الخميس 2026-11-19
+        assertEquals(java.time.LocalDate.of(2026, 11, 19), r.date)
+        assertEquals("مراجعة الرياضيات", r.title)
+    }
+
+    @Test fun weekdaySameAsTodayMovesAWeek() {
+        val r = p("جلسة الأحد")
+        assertEquals(today.plusDays(7), r.date)
+    }
+
+    @Test fun persianDigitsAreUnderstood() {
+        assertEquals(45, p("حل تمارين ۴۵ دقيقة").durationMinutes)
+    }
+
+    @Test fun hoursUnitConvertsToMinutes() {
+        assertEquals(120, p("قراءة ساعتين").durationMinutes)
+    }
+
+    @Test fun noonPeriodShiftsAfternoonHours() {
+        assertEquals(14, p("محاضرة 2 الظهر").hour)
+    }
+
+    @Test fun morningPeriodKeepsEarlyHour() {
+        assertEquals(7, p("جري 7 الصبح").hour)
+    }
+
+    @Test fun midnightIsZero() {
+        assertEquals(0, p("مراجعة 12 ص").hour)
+    }
+
+    @Test fun bareNumberStaysInTheTitle() {
+        // A lone number is ambiguous, so the parser leaves it as text instead of guessing a clock.
+        val r = p("مكالمة 4")
+        assertNull(r.hour)
+        assertEquals("مكالمة 4", r.title)
+    }
+
+    @Test fun outOfRangeHourIsDropped() {
+        assertNull(p("اجتماع 27").hour)
+    }
+
+    @Test fun importantWordIsHighPriority() {
+        assertEquals(2, p("تسليم مهم").priorityLevel)
+    }
+
+    @Test fun urgentBeatsImportant() {
+        assertEquals(3, p("تسليم عاجل مهم").priorityLevel)
+    }
+
+    @Test fun plainSentenceHasNoDetails() {
+        val r = p("اقرأ صفحتين من الكتاب")
+        assertEquals("اقرأ صفحتين من الكتاب", r.title)
+        assertNull(r.date); assertNull(r.hour); assertNull(r.durationMinutes); assertNull(r.priorityLevel)
+    }
+
+    @Test fun leadingFillerIsDroppedFromTitle() {
+        assertEquals("الكتاب اقرأ", p("في الكتاب اقرأ").title)
+    }
+
+    @Test fun minuteAndHourDurationsAddUp() {
+        assertEquals(90, p("تدريب ساعة 30 دقيقة").durationMinutes)
+    }
 }

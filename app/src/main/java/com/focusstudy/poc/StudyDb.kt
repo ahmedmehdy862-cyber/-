@@ -64,6 +64,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV6(db)
         migrateToV7(db)
         migrateToV8(db)
+        migrateToV9(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -74,6 +75,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 6) migrateToV6(db)
         if (oldVersion < 7) migrateToV7(db)
         if (oldVersion < 8) migrateToV8(db)
+        if (oldVersion < 9) migrateToV9(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -365,6 +367,52 @@ class StudyDb private constructor(context: Context) :
             """.trimIndent()
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_subtasks_task ON subtasks(task_id)")
+    }
+
+    /**
+     * v9 - local consent ledger, additive.
+     *
+     * Android keeps its own permission grants across updates, but the app cannot tell
+     * "لم يُمنح قط" from "كان ممنوحًا وأوقفه النظام" without remembering it. This table
+     * lives only on this phone; nothing here is uploaded.
+     */
+    private fun migrateToV9(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS consents(
+              key TEXT PRIMARY KEY,
+              granted INTEGER NOT NULL,
+              version INTEGER NOT NULL,
+              at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
+    data class StoredConsent(val key: String, val granted: Boolean, val version: Int, val at: Long)
+
+    /** Upserts one permission state; the row keeps the last time it was seen in that state. */
+    fun saveConsent(key: String, granted: Boolean, version: Int, at: Long) {
+        writableDatabase.execSQL(
+            "INSERT INTO consents(key, granted, version, at) VALUES(?,?,?,?) " +
+                "ON CONFLICT(key) DO UPDATE SET granted=excluded.granted, version=excluded.version, at=excluded.at",
+            arrayOf(key, if (granted) 1 else 0, version, at)
+        )
+    }
+
+    fun consents(): List<StoredConsent> {
+        val out = mutableListOf<StoredConsent>()
+        readableDatabase.rawQuery("SELECT key, granted, version, at FROM consents", null).use { cursor ->
+            while (cursor.moveToNext()) {
+                out += StoredConsent(
+                    key = cursor.getString(0),
+                    granted = cursor.getInt(1) == 1,
+                    version = cursor.getInt(2),
+                    at = cursor.getLong(3)
+                )
+            }
+        }
+        return out
     }
 
     private fun addColumnIfMissing(
@@ -1017,7 +1065,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 8
+        private const val DB_VERSION = 9
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

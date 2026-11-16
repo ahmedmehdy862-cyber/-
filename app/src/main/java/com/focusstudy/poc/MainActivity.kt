@@ -452,6 +452,9 @@ private fun AppRoot(
     }
     LaunchedEffect(Unit) { PrayerReminderScheduler.schedule(context) }
 
+    // Keep the local consent ledger current even if the user never opens the session setup.
+    LaunchedEffect(Unit) { withContext(Dispatchers.IO) { runCatching { ConsentStore.record(context) } } }
+
     LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
 
         ReminderEngine.channels(context)
@@ -2135,6 +2138,8 @@ private fun SessionSetupScreen(
 
     var ownerActive by remember { mutableStateOf(DeviceOwnerController.isDeviceOwner(context)) }
 
+    var consentChanges by remember { mutableStateOf<Map<ConsentKey, ConsentPolicy.Change>>(emptyMap()) }
+
     var showOwnerHelp by remember { mutableStateOf(false) }
 
     LaunchedEffect(taskId) {
@@ -2174,6 +2179,8 @@ private fun SessionSetupScreen(
         batteryOk = isIgnoringBatteryOptimizations(context)
 
         ownerActive = DeviceOwnerController.isDeviceOwner(context)
+
+        consentChanges = runCatching { ConsentStore.record(context) }.getOrDefault(emptyMap())
 
     }
 
@@ -2395,10 +2402,13 @@ private fun SessionSetupScreen(
                             if (!accessibilityOn) {
                                 PermissionRow(
                                     title = "إذن الوصول (Accessibility)",
-                                    description = "يخفي التطبيق المقفل ويعيدك للرئيسية.",
+                                    description = consentDescription(
+                                        "يخفي التطبيق المقفل ويعيدك للرئيسية.",
+                                        consentChanges[ConsentKey.ACCESSIBILITY]
+                                    ),
                                     granted = false,
                                     required = true,
-                                    actionLabel = "منح",
+                                    actionLabel = consentActionLabel(consentChanges[ConsentKey.ACCESSIBILITY]),
                                     onAction = { openAccessibilitySettings(context) }
                                 )
                             }
