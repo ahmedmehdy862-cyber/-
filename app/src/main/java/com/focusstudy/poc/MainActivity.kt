@@ -136,6 +136,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 
 import androidx.compose.material3.TextButton
+import java.time.LocalDate
 import androidx.compose.material3.ProvideTextStyle
 
 import androidx.compose.runtime.Composable
@@ -3475,7 +3476,37 @@ private fun SessionScreen(
 }
 
 @Composable
+private fun QuickCaptureHint(title: String, onApply: (ParsedCapture) -> Unit) {
+    val trimmed = title.trim()
+    if (trimmed.length < 4 || !trimmed.contains(' ')) return
+    val today = remember(trimmed) { LocalDate.now() }
+    val parsed = remember(trimmed, today) { QuickCaptureParser.parse(trimmed, today) }
+    val hasDetails = parsed.date != null || parsed.hour != null ||
+        parsed.durationMinutes != null || parsed.priorityLevel != null
+    if (!hasDetails) return
+    val parts = mutableListOf<String>()
+    parsed.date?.let { d ->
+        parts += when (d) {
+            today -> "اليوم"
+            today.plusDays(1) -> "غدًا"
+            today.plusDays(2) -> "بعد بكرة"
+            else -> d.toString()
+        }
+    }
+    parsed.hour?.let { h -> parts += h.toString().padStart(2, '0') + ":" + parsed.minute.toString().padStart(2, '0') }
+    parsed.durationMinutes?.let { parts += "$it دقيقة" }
+    parsed.priorityLevel?.let { parts += if (it >= 3) "عاجل" else "مهم" }
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            "فهمت: " + parts.joinToString(" · "),
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
+        TextButton(onClick = { onApply(parsed) }) { Text("تطبيق") }
+    }
+}
 
+@Composable
 private fun AddTaskDialog(
     onDismiss: () -> Unit,
     subjects: List<StudySubject>,
@@ -3535,6 +3566,26 @@ private fun AddTaskDialog(
                 )
 
                 Spacer(Modifier.height(6.dp))
+                QuickCaptureHint(
+                    title = title,
+                    onApply = { capture ->
+                        var day = capture.date
+                        if (day == null && capture.hour != null) day = LocalDate.now()
+                        day?.let { d ->
+                            val time = capture.hour
+                            dueAtString = if (time == null) d.toString() else
+                                d.toString() + " " + time.toString().padStart(2, '0') + ":" + capture.minute.toString().padStart(2, '0')
+                        }
+                        capture.durationMinutes?.let { if (it in 1..720) minutesInput = it.toString() }
+                        priority = when (capture.priorityLevel) {
+                            3 -> TaskPriority.URGENT
+                            2 -> TaskPriority.HIGH
+                            else -> priority
+                        }
+                        if (capture.title.isNotBlank()) title = capture.title
+                        expanded = true
+                    }
+                )
                 TextButton(
                     onClick = { expanded = !expanded },
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp)

@@ -26,12 +26,21 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.time.ZoneId
 
 internal fun parseDueDateMillis(value: String?): Long? = value
     ?.trim()
     ?.takeIf(String::isNotEmpty)
-    ?.let { runCatching { LocalDate.parse(it).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli() }.getOrNull() }
+    ?.let { raw ->
+        runCatching { LocalDate.parse(raw).atStartOfDay(ZoneId.systemDefault()) }
+            .recoverCatching { LocalDateTime.parse(raw, DUE_DATE_TIME).atZone(ZoneId.systemDefault()) }
+            .getOrNull()
+            ?.toInstant()?.toEpochMilli()
+    }
+
+private val DUE_DATE_TIME: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
 
 internal fun formatDueDate(value: Long?): String = value
     ?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()).toLocalDate().toString() }
