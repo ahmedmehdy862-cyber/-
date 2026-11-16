@@ -902,21 +902,17 @@ class StudyDb private constructor(context: Context) :
     private fun createNextRecurringTask(db: SQLiteDatabase, original: StudyTask) {
         if (original.recurrence == Recurrence.NONE) return
         val zone = java.time.ZoneId.systemDefault()
-        val completedDate = java.time.Instant.ofEpochMilli(
-            original.completedAt ?: System.currentTimeMillis()
-        ).atZone(zone).toLocalDate()
+        // The engine keeps the original clock time and skips occurrences already past.
+        val nextDueAt = RecurrenceEngine.next(
+            dueAt = original.dueAt,
+            recurrence = original.recurrence,
+            completedAt = original.completedAt ?: System.currentTimeMillis(),
+            zone = zone
+        ) ?: return
         val dueDate = original.dueAt?.let {
             java.time.Instant.ofEpochMilli(it).atZone(zone).toLocalDate()
         }
-        // A late completion must not create another occurrence that's already overdue.
-        val baseDate = dueDate?.let { maxOf(it, completedDate) } ?: completedDate
-        val nextDueDate = when (original.recurrence) {
-            Recurrence.DAILY -> baseDate.plusDays(1)
-            Recurrence.WEEKLY -> baseDate.plusWeeks(1)
-            Recurrence.MONTHLY -> baseDate.plusMonths(1)
-            Recurrence.NONE -> return
-        }
-        val nextDueAt = nextDueDate.atStartOfDay(zone).toInstant().toEpochMilli()
+        val nextDueDate = java.time.Instant.ofEpochMilli(nextDueAt).atZone(zone).toLocalDate()
         val nextStartAt = original.startAt?.let { start ->
             val startDate = java.time.Instant.ofEpochMilli(start).atZone(zone).toLocalDate()
             val daysBeforeDue = dueDate?.let { java.time.temporal.ChronoUnit.DAYS.between(startDate, it) } ?: 0L

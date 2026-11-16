@@ -113,4 +113,60 @@ class QuickCaptureParserTest {
     @Test fun minuteAndHourDurationsAddUp() {
         assertEquals(90, p("تدريب ساعة 30 دقيقة").durationMinutes)
     }
+    // ---- routines and relative times: what a personal organizer needs every day
+    @Test fun dailyRoutinePhrase() {
+        val r = p("كل يوم رياضة الصبح")
+        assertEquals(Recurrence.DAILY, r.recurrence)
+        assertEquals("رياضة", r.title)
+        assertEquals(8, r.hour)
+    }
+
+    @Test fun weeklyRoutinePhrase() {
+        val r = p("كل أسبوع تنظيف البيت")
+        assertEquals(Recurrence.WEEKLY, r.recurrence)
+        assertEquals("تنظيف البيت", r.title)
+    }
+
+    @Test fun monthlyRoutinePhrase() {
+        val r = p("كل شهر دفع الإيجار")
+        assertEquals(Recurrence.MONTHLY, r.recurrence)
+        assertEquals("دفع الإيجار", r.title)
+    }
+
+    @Test fun weeklyOnANamedDay() {
+        val r = p("كل السبت مباراة")
+        assertEquals(Recurrence.WEEKLY, r.recurrence)
+        assertEquals(LocalDate.of(2026, 11, 21), r.date)
+        assertEquals("مباراة", r.title)
+    }
+
+    @Test fun routineWordAlone() {
+        assertEquals(Recurrence.DAILY, p("صلاة يوميا").recurrence)
+    }
+
+    @Test fun inAnHourIsRelativeToNow() {
+        val r = QuickCaptureParser.parse("اتصل بأمي بعد ساعة", today, java.time.LocalTime.of(9, 0))
+        assertEquals(today, r.date)
+        assertEquals(10, r.hour)
+        assertEquals(0, r.minute)
+        assertEquals("اتصل بأمي", r.title)
+    }
+
+    @Test fun relativeHalfHourCrossesMidnight() {
+        val r = QuickCaptureParser.parse("مكالمة بعد نص ساعة", today, java.time.LocalTime.of(23, 40))
+        assertEquals(today.plusDays(1), r.date)
+        assertEquals(0, r.hour)
+        assertEquals(10, r.minute)
+    }
+
+    @Test fun morningWithTomorrowUsesTheDefaultHour() {
+        val r = p("بكرة الصبح جري")
+        assertEquals(today.plusDays(1), r.date)
+        assertEquals(8, r.hour)
+        assertEquals("جري", r.title)
+    }
+
+    @Test fun plainTaskIsNotARoutine() {
+        assertEquals(Recurrence.NONE, p("اشتري حليب").recurrence)
+    }
 }

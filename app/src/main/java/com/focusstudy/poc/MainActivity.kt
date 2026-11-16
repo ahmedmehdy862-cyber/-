@@ -871,6 +871,8 @@ private fun TasksScreen(
         }
 
         if (dashboard) {
+            // The day dashboard is taller than one screen on small phones, so it scrolls.
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
             Spacer(Modifier.height(12.dp))
             StudyCompanionCard(preferences, tasks)
             Spacer(Modifier.height(12.dp))
@@ -895,6 +897,20 @@ private fun TasksScreen(
                 AccessibilityWarningCard(onEnable = { openAccessibilitySettings(context) })
             }
             Spacer(Modifier.height(12.dp))
+            TodayPlanSection(
+                tasks = tasks,
+                onToggleDone = { task ->
+                    viewModel.setStatus(task.id, if (task.isDone) TaskStatus.TODO else TaskStatus.DONE)
+                },
+                onStartTask = { taskId -> onOpenSetup(taskId) },
+                onDeferToTomorrow = { task ->
+                    val start = java.time.LocalDate.now().plusDays(1)
+                        .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    viewModel.reschedule(task.id, start)
+                },
+                onAddTask = { showAddDialog = true }
+            )
+            Spacer(Modifier.height(12.dp))
             Card(colors = CardDefaults.cardColors(containerColor = FocusColors.Surface), shape = RoundedCornerShape(20.dp)) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
@@ -904,7 +920,8 @@ private fun TasksScreen(
                     TextButton(onClick = onOpenAllTasks) { Text("إدارة المهام") }
                 }
             }
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(12.dp))
+            }
         } else {
         Spacer(Modifier.height(16.dp))
         if (!accessibilityOn) {
@@ -977,14 +994,7 @@ private fun TasksScreen(
                     onDelete = { deleteTarget = task },
                     onEdit = { editTarget = task; showEditDialog = true },
                     onDuplicate = { viewModel.duplicate(task.id) },
-                    onReschedule = {
-                        val today = java.time.LocalDate.now()
-                        val currentDue = task.dueAt?.let {
-                            java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
-                        } ?: today
-                        val newDate = if (currentDue.isBefore(today)) today.plusDays(1) else currentDue.plusDays(1)
-                        viewModel.reschedule(task.id, parseDueDateMillis(newDate.toString()))
-                    },
+                    onReschedule = { target -> viewModel.reschedule(task.id, target) },
                     onSubtasks = { subtasksTarget = task },
                     onToggleDone = {
                         viewModel.setStatus(
@@ -1325,7 +1335,7 @@ private fun HeroCard(totalMinutes: Int, tasks: List<StudyTask>, preferences: Foc
 
                 Text(
 
-                    text = "هدف المذاكرة: ${preferences.dailyGoalMinutes} دقيقة · التركيز الكلي: $totalMinutes دقيقة",
+                    text = "هدف اليوم: ${preferences.dailyGoalMinutes} دقيقة · التركيز الكلي: $totalMinutes دقيقة",
 
                     style = MaterialTheme.typography.bodySmall,
 
@@ -1440,7 +1450,7 @@ private fun TaskCard(
     onDelete: () -> Unit,
     onEdit: () -> Unit,
     onDuplicate: () -> Unit,
-    onReschedule: () -> Unit,
+    onReschedule: (Long?) -> Unit,
     onSubtasks: () -> Unit,
     onToggleDone: () -> Unit
 
@@ -1457,6 +1467,9 @@ private fun TaskCard(
     )
 
     val accentText = FocusColors.onTint(accent)
+    val dayMillis = 24L * 60L * 60L * 1000L
+    val todayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val tomorrowStart = todayStart + dayMillis
     var moreExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -1571,7 +1584,8 @@ private fun TaskCard(
 
                     text = (subjectName?.let { "$it · " } ?: "") + "${typeLabel.ifBlank { task.category.label }} · ${task.priority.label}" +
                         (task.dueAt?.let { " · الموعد ${formatDueDate(it)}" } ?: "") +
-                        (task.originalDueAt?.let { " · كان ${formatDueDate(it)}" } ?: ""),
+                        (task.originalDueAt?.let { " · كان ${formatDueDate(it)}" } ?: "") +
+                        (if (task.recurrence != Recurrence.NONE) " · ${RecurrenceEngine.label(task.recurrence)}" else ""),
 
                     style = MaterialTheme.typography.bodySmall,
 
@@ -1633,7 +1647,11 @@ private fun TaskCard(
                         TextButton(onClick = { moreExpanded = true }) { Text("المزيد") }
                         DropdownMenu(expanded = moreExpanded, onDismissRequest = { moreExpanded = false }) {
                             DropdownMenuItem(text = { Text("المهام الفرعية") }, onClick = { moreExpanded = false; onSubtasks() })
-                            DropdownMenuItem(text = { Text("تأجيل إلى غد") }, onClick = { moreExpanded = false; onReschedule() }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("اليوم") }, onClick = { moreExpanded = false; onReschedule(todayStart) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("غدًا") }, onClick = { moreExpanded = false; onReschedule(tomorrowStart) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("بعد 3 أيام") }, onClick = { moreExpanded = false; onReschedule(todayStart + 3 * dayMillis) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("الأسبوع القادم") }, onClick = { moreExpanded = false; onReschedule(todayStart + 7 * dayMillis) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("بدون موعد") }, onClick = { moreExpanded = false; onReschedule(null) }, enabled = !task.isDone && task.dueAt != null)
                             DropdownMenuItem(text = { Text("نسخ المهمة") }, onClick = { moreExpanded = false; onDuplicate() })
                         }
                     }
@@ -3509,7 +3527,8 @@ private fun QuickCaptureHint(title: String, onApply: (ParsedCapture) -> Unit) {
     val today = remember(trimmed) { LocalDate.now() }
     val parsed = remember(trimmed, today) { QuickCaptureParser.parse(trimmed, today) }
     val hasDetails = parsed.date != null || parsed.hour != null ||
-        parsed.durationMinutes != null || parsed.priorityLevel != null
+        parsed.durationMinutes != null || parsed.priorityLevel != null ||
+        parsed.recurrence != Recurrence.NONE
     if (!hasDetails) return
     val parts = mutableListOf<String>()
     parsed.date?.let { d ->
@@ -3523,6 +3542,7 @@ private fun QuickCaptureHint(title: String, onApply: (ParsedCapture) -> Unit) {
     parsed.hour?.let { h -> parts += h.toString().padStart(2, '0') + ":" + parsed.minute.toString().padStart(2, '0') }
     parsed.durationMinutes?.let { parts += "$it دقيقة" }
     parsed.priorityLevel?.let { parts += if (it >= 3) "عاجل" else "مهم" }
+    if (parsed.recurrence != Recurrence.NONE) parts += RecurrenceEngine.label(parsed.recurrence)
     Row(modifier = Modifier.fillMaxWidth()) {
         Text(
             "فهمت: " + parts.joinToString(" · "),
@@ -3609,6 +3629,7 @@ private fun AddTaskDialog(
                             2 -> TaskPriority.HIGH
                             else -> priority
                         }
+                        if (capture.recurrence != Recurrence.NONE) recurrence = capture.recurrence
                         if (capture.title.isNotBlank()) title = capture.title
                         expanded = true
                     }
