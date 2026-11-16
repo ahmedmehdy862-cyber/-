@@ -128,7 +128,7 @@ internal fun AvatarPortrait(
     Box(modifier.size(size), contentAlignment = Alignment.Center) {
         Box(
             Modifier.fillMaxSize().padding(3.dp)
-                .border(3.dp, Brush.linearGradient(listOf(style.tint, FocusColors.Violet, style.tint)), CircleShape)
+                .border(3.dp, Brush.linearGradient(listOf(style.tint, FocusColors.Teal, style.tint)), CircleShape)
                 .padding(4.dp).clip(CircleShape).background(FocusColors.SurfaceHigh),
             contentAlignment = Alignment.Center
         ) {

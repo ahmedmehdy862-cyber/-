@@ -522,7 +522,7 @@ private fun AppRoot(
         }
     }
 
-    BrandBackground {
+    BrandBackground(animate = !preferences.reduceMotion && session == null) {
 
         Column(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing)) {
         Crossfade(

@@ -96,14 +96,20 @@ fun FocusLogo(modifier: Modifier = Modifier, size: Dp = 56.dp, showTile: Boolean
 
 /** Deep navy background with one drifting teal glow; matches the brand sheet. */
 @Composable
-fun BrandBackground(content: @Composable BoxScope.() -> Unit) {
-    val transition = rememberInfiniteTransition(label = "background")
-    val drift by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse),
-        label = "drift"
-    )
+fun BrandBackground(animate: Boolean = true, content: @Composable BoxScope.() -> Unit) {
+    val drift = if (animate) {
+        val transition = rememberInfiniteTransition(label = "background")
+        val value by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(18000, easing = LinearEasing), RepeatMode.Reverse),
+            label = "drift"
+        )
+        value
+    } else {
+        // Reduced motion, or a focus session in progress: one calm frame, no animation work.
+        0.35f
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(FocusColors.background)) {
         Canvas(Modifier.fillMaxSize()) {

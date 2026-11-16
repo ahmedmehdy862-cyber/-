@@ -200,6 +200,7 @@ internal fun PersonalizationScreen(
     var morningHour by rememberSaveable(current.morningMessageHour) { mutableStateOf(current.morningMessageHour) }
     var eveningHour by rememberSaveable(current.eveningMessageHour) { mutableStateOf(current.eveningMessageHour) }
     var tone by rememberSaveable(current.tonePreference) { mutableStateOf(current.tonePreference) }
+    var reduceMotion by rememberSaveable(current.reduceMotion) { mutableStateOf(current.reduceMotion) }
     var density by rememberSaveable(current.notificationDensity) { mutableStateOf(current.notificationDensity) }
     var smartReminders by rememberSaveable(current.smartRemindersEnabled) { mutableStateOf(current.smartRemindersEnabled) }
     var quietHours by rememberSaveable(current.quietHoursEnabled) { mutableStateOf(current.quietHoursEnabled) }
@@ -301,6 +302,14 @@ internal fun PersonalizationScreen(
             }
             item {
                 PreferenceCard(
+                    title = "تقليل الحركة",
+                    description = "تثبيت خلفية التطبيق بدل حركتها المستمرة. تهدأ تلقائيًا خلال جلسة التركيز لتوفير البطارية."
+                ) {
+                    PreferenceSwitchRow("حركة أقل", "الخلفية تصبح ثابتة.", reduceMotion) { reduceMotion = it }
+                }
+            }
+            item {
+                PreferenceCard(
                     title = "الإشعارات الذكية",
                     description = "تذكير واحد لكل مهمة قبل موعدها، يتأجل تلقائيًا في الصلاة والجلسة وساعات الهدوء."
                 ) {
@@ -393,6 +402,7 @@ internal fun PersonalizationScreen(
                     remindersPerDay = 1,
                     avatarPath = avatarPath,
                     companionStyle = companionStyle,
+                    reduceMotion = reduceMotion,
                     generalNotificationsEnabled = generalNotifications,
                     morningMessageEnabled = morningEnabled,
                     eveningMessageEnabled = eveningEnabled,

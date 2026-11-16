@@ -28,7 +28,8 @@ data class FocusPreferences(
     val leadMinutes: Int = 30,
     val legacyReminders: Boolean = false,
     val quietStartHour: Int = 23,
-    val quietEndHour: Int = 7
+    val quietEndHour: Int = 7,
+    val reduceMotion: Boolean = false
 ) {
     companion object {
         internal const val FILE = "focus_study_preferences"
@@ -64,7 +65,8 @@ data class FocusPreferences(
                 leadMinutes = prefs.getInt("reminder_lead_minutes", 30).coerceIn(5, 120),
                 legacyReminders = prefs.getBoolean("legacy_reminders", false),
                 quietStartHour = prefs.getInt("quiet_start_hour", 23).coerceIn(0, 23),
-                quietEndHour = prefs.getInt("quiet_end_hour", 7).coerceIn(0, 23)
+                quietEndHour = prefs.getInt("quiet_end_hour", 7).coerceIn(0, 23),
+                reduceMotion = prefs.getBoolean("reduce_motion", false)
             )
         }
 
@@ -96,6 +98,7 @@ data class FocusPreferences(
                 .putBoolean("legacy_reminders", value.legacyReminders)
                 .putInt("quiet_start_hour", value.quietStartHour.coerceIn(0, 23))
                 .putInt("quiet_end_hour", value.quietEndHour.coerceIn(0, 23))
+                .putBoolean("reduce_motion", value.reduceMotion)
                 .apply()
         }
     }

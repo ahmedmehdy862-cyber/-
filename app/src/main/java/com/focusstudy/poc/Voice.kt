@@ -74,7 +74,11 @@ internal object Voice {
 
     private val recent = ArrayDeque<String>()
 
-    private val forbidden = listOf("هتلاقي", "اختار", "يا فاشل", "كسول", "بتاعة", "عبيط", "الشبشب")
+    /** Words this app never says: blame, mockery or a dialect we do not use. Checked by VoiceContentTest. */
+    internal val bannedWords = listOf(
+        "هتلاقي", "اختار", "يا فاشل", "فشلت", "كسول", "بتاعة", "عبيط", "الشبشب",
+        "لوم", "مقصر", "متأخر دائمًا", "عار"
+    )
 
     fun say(
         scene: VoiceScene,
@@ -98,15 +102,26 @@ internal object Voice {
         variantSeed: Int = 0
     ): String {
         val effective = resolveTone(scene, tone)
-        val options = candidates(scene, persona, effective).map { fill(it, vars) }
-            .ifEmpty { candidates(scene, persona, VoiceTone.FORMAL_REVERENT).map { fill(it, vars) } }
-            .ifEmpty { listOf(fill(defaultLine(scene), vars)) }
+        // The persona's own mark belongs in the sentence; otherwise every greeting rendered blank.
+        val filledVars = vars + ("mark" to persona.mark)
+        val options = candidates(scene, persona, effective).map { fill(it, filledVars) }
+            .ifEmpty { candidates(scene, persona, VoiceTone.FORMAL_REVERENT).map { fill(it, filledVars) } }
+            .ifEmpty { listOf(fill(defaultLine(scene), filledVars)) }
         val fresh = options.filter { it !in avoidRecent }
         val pool = fresh.ifEmpty { options }
         return pool[Math.floorMod(variantSeed, pool.size)]
     }
 
-    fun isForbidden(text: String): Boolean = forbidden.any { text.contains(it) }
+    /**
+     * Whole-word check: matching by substring used to flag «الإشعارات» for containing «عار»,
+     * which made honest sentences look forbidden.
+     */
+    fun isForbidden(text: String): Boolean {
+        val tokens = text.split(TOKEN_SEPARATOR).filter { it.isNotBlank() }
+        return bannedWords.any { word ->
+            if (word.contains(' ')) text.contains(word) else tokens.any { it == word }
+        }
+    }
 
     fun hasUnresolvedPlaceholder(text: String): Boolean = PLACEHOLDER.containsMatchIn(text)
 
@@ -212,6 +227,8 @@ internal object Voice {
         text = PLACEHOLDER.replace(text, "")
         return text.replace(Regex("\\s{2,}"), " ").trim()
     }
+
+    private val TOKEN_SEPARATOR = Regex("[^\\p{L}\\p{M}]+")
 
     private val PLACEHOLDER = Regex("\\{[a-zA-Z_]+\\}")
 }

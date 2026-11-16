@@ -1,5 +1,12 @@
-# Focus Study — نسخة 0.2
+# مُنظِّم (Focus Study) — تطبيق التركيز والتنظيم
 
+## الهوية (Brand)
+
+- الاسم الظاهر: **مُنظِّم**. الاسم الداخلي `com.focusstudy.poc` لا يتغير حفاظًا على بيانات المستخدمين ومسار التحديث.
+- الألوان: كحلي `#142B45` أساسي، تركواز `#16B8A6` للإبراز، خلفية فاتحة `#F7F8FA`. القيم في `Theme.kt` (`Navy`, `Blue`, `Teal`) والأيقونة التكيفية في `res/drawable/ic_launcher_*` بنفس اللونين.
+- الصوت: أربع نبرات (`VoiceTone`) موقّر/سيمي فورمال/مرح خفيف/مرح جريء، والشخصيات الأربع (`Persona`) لكل منها رمزها في التحية. المواقف الجدّية (الصلاة، الامتحان، اليوم الصعب) تُنزَل دائمًا إلى الموقّر. الكلمات الممنوعة في `Voice.bannedWords` ويفحصها `VoiceContentTest`.
+- الحركة: خلفية متحركة واحدة (`BrandBackground`)، وتُثبَّت عند تفعيل «تقليل الحركة» أو أثناء جلسة التركيز.
+
 ## QUBIXStore and release synchronization
 
 The public app card and detail page are served by [QUBIXStore](https://qubixstore.vercel.app/focus-study-updates). QUBIXStore reads the current app description, version, release notes, and APK URL from `https://update-site-sigma.vercel.app/api/latest`; the Android app reads the same release record and opens the QUBIXStore page for update notices.
