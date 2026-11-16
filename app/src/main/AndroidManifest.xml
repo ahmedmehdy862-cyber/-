@@ -91,6 +91,7 @@
             android:exported="false" />
 
 
+
         <receiver
             android:name=".AppUpdateReceiver"
             android:exported="false" />

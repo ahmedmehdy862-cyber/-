@@ -213,7 +213,7 @@ internal object Voice {
         return text.replace(Regex("\\s{2,}"), " ").trim()
     }
 
-    private val PLACEHOLDER = Regex("\\{[a-zA-Z_]+}")
+    private val PLACEHOLDER = Regex("\\{[a-zA-Z_]+\\}")
 }
 
 /** Small façade the UI uses so the tone setting and the persona are read once. */

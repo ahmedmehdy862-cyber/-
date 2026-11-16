@@ -131,7 +131,7 @@ internal object ReminderEngine {
                 .putExtra(EXTRA_KIND, reminder.kind)
             val pending = PendingIntent.getBroadcast(
                 context,
-                requestCode(reminder.id),
+                requestCode(reminder.taskId, reminder.kind),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -149,6 +149,9 @@ internal object ReminderEngine {
         val db = StudyDb.get(appContext)
         val prefs = FocusPreferences.load(appContext)
         channels(appContext)
+
+        // Alarms left behind by an older schedule must not fire a second time.
+        if (reminderId > 0 && !db.reminderIsPending(reminderId)) return
 
         if (taskId >= 0) {
             val task = db.task(taskId)
@@ -182,7 +185,9 @@ internal object ReminderEngine {
             quietEnd = if (prefs.quietHoursEnabled) prefs.quietEndHour * 60 else null
         )
 
-        when (val decision = NotificationPolicy.decide(input)) {
+        val decision = NotificationPolicy.decide(input)
+
+        when (decision) {
             ReminderDecision.Send -> {
                 db.markReminderDone(reminderId)
                 deliver(appContext, db, prefs, taskId, kind, now)
@@ -190,7 +195,7 @@ internal object ReminderEngine {
             is ReminderDecision.Defer -> {
                 db.markReminderDone(reminderId, "deferred")
                 val deferred = StoredReminder(-1, taskId, kind, decision.until)
-                scheduleOne(appContext, deferred, requestCode(reminderId))
+                scheduleOne(appContext, deferred, requestCode(taskId, kind))
                 db.logNotification(kind, taskId.takeIf { it >= 0 }, now, null, "deferred:${decision.reason.key()}")
             }
             is ReminderDecision.Drop -> {
@@ -222,6 +227,7 @@ internal object ReminderEngine {
     }
 
     private fun deliver(context: Context, db: StudyDb, prefs: FocusPreferences, taskId: Long, kind: String, now: Long) {
+
         if (!notificationsAllowed(context)) return
         val task = db.task(taskId)
         val subject = task?.subjectId?.let { id -> db.subjects().firstOrNull { it.id == id } }
@@ -327,6 +333,17 @@ internal object ReminderEngine {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    /** Stable per task and kind: re-scheduling replaces the previous alarm instead of stacking a new one. */
+    private fun requestCode(taskId: Long, kind: String): Int {
+        val kindSlot = when (kind) {
+            ReminderKind.TASK_DUE.key -> 1
+            ReminderKind.TASK_OVERDUE.key -> 2
+            ReminderKind.EXAM.key -> 3
+            else -> 4
+        }
+        return (Math.floorMod(taskId, 9_000L).toInt() * 10 + kindSlot) + 21_000
     }
 
     private fun requestCode(id: Long): Int = Math.floorMod(id, 100_000L).toInt() + 21_000

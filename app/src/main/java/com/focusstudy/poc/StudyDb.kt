@@ -421,6 +421,13 @@ class StudyDb private constructor(context: Context) :
         return rows
     }
 
+    /** True only while the row is still pending; used to ignore alarms left over from older schedules. */
+    fun reminderIsPending(reminderId: Long): Boolean =
+        readableDatabase.rawQuery(
+            "SELECT 1 FROM reminders WHERE id = ? AND state = 'pending' LIMIT 1",
+            arrayOf(reminderId.toString())
+        ).use { it.moveToFirst() }
+
     fun markReminderDone(reminderId: Long, state: String = "fired") {
         writableDatabase.execSQL("UPDATE reminders SET state = ? WHERE id = ?", arrayOf<Any?>(state, reminderId))
     }
