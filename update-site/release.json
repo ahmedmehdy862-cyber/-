@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 19,
-  "versionName": "0.16.2",
+  "versionCode": 20,
+  "versionName": "0.16.3",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.16.2/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/focus-study/releases/download/focus-v0.16.3/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "جديد: اكتب المهمة بجملة واحدة («راجع الفيزياء بكرة 5 العصر ساعة عاجل») فيفهم التاريخ والساعة والمدة والأولوية، ويطبقها بزر واحد. وأُصلح انهيار النبرة وتكدّس المنبهات في 0.16.1. صفحة الخصوصية صارت متاحة على موقع التحديثات."
+  "releaseNotes": "جديد: التطبيق بقى يتذكر موافقاتك على الأذونات محليًا على الهاتف، فلو النظام أوقف إذنًا بعد تحديث يقول لك «كان مفعّلًا وأوقفه النظام» وزر «إعادة التفعيل» بدل ما يطلب الموافقة من الأول. وأُصلح التقاط المهمة بالعربية، وصلابة إعادة جدولة التذكيرات بعد إعادة تشغيل الهاتف، وسرعة فتح شاشة الجلسة."
 }
