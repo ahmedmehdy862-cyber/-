@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
+import android.util.Log
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
@@ -252,12 +253,39 @@ class DailyReminderReceiver : BroadcastReceiver() {
 
 class FocusBootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent?) {
-        if (intent?.action in setOf(Intent.ACTION_BOOT_COMPLETED, Intent.ACTION_TIME_CHANGED, Intent.ACTION_TIMEZONE_CHANGED, Intent.ACTION_DATE_CHANGED)) {
-            StudyNotificationScheduler.update(context, FocusPreferences.load(context))
-            ReminderEngine.channels(context)
-            ReminderEngine.refresh(context)
-            PrayerReminderScheduler.schedule(context)
-            AppUpdateManager.schedule(context)
+        val action = intent?.action
+        if (action !in setOf(
+                Intent.ACTION_BOOT_COMPLETED,
+                Intent.ACTION_TIME_CHANGED,
+                Intent.ACTION_TIMEZONE_CHANGED,
+                Intent.ACTION_DATE_CHANGED
+            )
+        ) return
+
+        // One failing step must not cancel the rest: a single crash here used to leave the
+        // phone with no scheduled reminders until the user opened the app again.
+        val app = context.applicationContext
+        val result = goAsync()
+        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+            try {
+                runCatching { StudyNotificationScheduler.update(app, FocusPreferences.load(app)) }
+                    .onFailure { Log.w(TAG, "daily reminder reschedule failed", it) }
+                runCatching { ReminderEngine.channels(app) }
+                    .onFailure { Log.w(TAG, "channels failed", it) }
+                runCatching { ReminderEngine.refresh(app) }
+                    .onFailure { Log.w(TAG, "reminder refresh failed", it) }
+                runCatching { PrayerReminderScheduler.schedule(app) }
+                    .onFailure { Log.w(TAG, "prayer schedule failed", it) }
+                runCatching { AppUpdateManager.schedule(app) }
+                    .onFailure { Log.w(TAG, "update check failed", it) }
+                Log.i(TAG, "rescheduled after $action")
+            } finally {
+                result.finish()
+            }
         }
+    }
+
+    private companion object {
+        const val TAG = "FocusBoot"
     }
 }

@@ -2139,6 +2139,7 @@ private fun SessionSetupScreen(
     var ownerActive by remember { mutableStateOf(DeviceOwnerController.isDeviceOwner(context)) }
 
     var consentChanges by remember { mutableStateOf<Map<ConsentKey, ConsentPolicy.Change>>(emptyMap()) }
+    val consentScope = rememberCoroutineScope()
 
     var showOwnerHelp by remember { mutableStateOf(false) }
 
@@ -2180,7 +2181,12 @@ private fun SessionSetupScreen(
 
         ownerActive = DeviceOwnerController.isDeviceOwner(context)
 
-        consentChanges = runCatching { ConsentStore.record(context) }.getOrDefault(emptyMap())
+        consentScope.launch {
+            val fresh = withContext(Dispatchers.IO) {
+                runCatching { ConsentStore.record(context) }.getOrDefault(emptyMap())
+            }
+            consentChanges = fresh
+        }
 
     }
 
