@@ -277,6 +277,7 @@ class FocusBootReceiver : BroadcastReceiver() {
                 runCatching { PrayerReminderScheduler.schedule(app) }
                     .onFailure { Log.w(TAG, "prayer schedule failed", it) }
                 runCatching { AppUpdateManager.schedule(app) }
+                runCatching { ReminderRescheduleJob.schedule(app) }
                     .onFailure { Log.w(TAG, "update check failed", it) }
                 Log.i(TAG, "rescheduled after $action")
             } finally {

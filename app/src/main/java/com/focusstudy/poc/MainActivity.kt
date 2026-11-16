@@ -454,6 +454,11 @@ private fun AppRoot(
 
     // Keep the local consent ledger current even if the user never opens the session setup.
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { runCatching { ConsentStore.record(context) } } }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            runCatching { ReminderRescheduleJob.schedule(context) }
+        }
+    }
 
     LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
 
