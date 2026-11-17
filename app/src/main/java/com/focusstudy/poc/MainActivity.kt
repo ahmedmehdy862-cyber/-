@@ -533,8 +533,9 @@ private fun AppRoot(
     }
 
     // System back must return to the previous screen instead of leaving the app.
+    val bottomTabIds = remember(preferences.bottomTabs) { BottomTab.normalize(preferences.bottomTabs) }
     androidx.activity.compose.BackHandler(
-        enabled = screen !in setOf("today", "tasks", "session")
+        enabled = screen != "session" && screen != "onboarding" && screen !in bottomTabIds
     ) {
         when {
             pickerTaskId != null -> pickerTaskId = null
@@ -611,6 +612,14 @@ private fun AppRoot(
                 "subjects" -> SubjectsScreen(onBack = { returnToPreviousTab() })
                 "task_types" -> TaskTypesScreen(onBack = { returnToPreviousTab() })
                 "skills" -> SkillsScreen(onBack = { returnToPreviousTab() })
+                "bottom_bar" -> BottomBarSettingsScreen(
+                    selected = preferences.bottomTabs,
+                    onBack = { returnToPreviousTab() },
+                    onSave = { tabs ->
+                        onPreferencesChanged(preferences.copy(bottomTabs = tabs))
+                        returnToPreviousTab()
+                    }
+                )
                 "messages" -> TeamMessagesScreen(onBack = { returnToPreviousTab() })
                 "goals" -> GoalsScreen(onBack = { returnToPreviousTab() })
                 "calendar" -> StudyCalendarScreen(
@@ -627,7 +636,8 @@ private fun AppRoot(
                     onTaskTypes = { openSecondary("task_types") },
                     onSkills = { openSecondary("skills") },
                     onMessages = { openSecondary("messages") },
-                    onGoals = { openSecondary("goals") }
+                    onGoals = { openSecondary("goals") },
+                    onBottomBar = { openSecondary("bottom_bar") }
                 )
                 "prayer_times" -> PrayerTimesScreen(onBack = { returnToPreviousTab() })
                 "updates" -> AppUpdatesScreen(onBack = { returnToPreviousTab() })
@@ -674,18 +684,21 @@ private fun AppRoot(
 
         }
 
-        if (screen in setOf("today", "tasks", "calendar", "subjects", "more")) {
+        if (screen in bottomTabIds) {
             NavigationBar(containerColor = FocusColors.Surface) {
-                listOf("today" to "اليوم", "tasks" to "مهامي", "calendar" to "التقويم", "subjects" to "موادي", "more" to "المزيد")
-                    .forEach { (tab, label) ->
-                        NavigationBarItem(
-                            selected = rootTab == tab,
-                            onClick = { rootTab = tab },
-                            icon = { Text(when (tab) { "today" -> "◷"; "tasks" -> "✓"; "calendar" -> "▦"; "subjects" -> "▤"; else -> "•••" }) },
-                            label = { Text(label) },
-                            alwaysShowLabel = true
-                        )
-                    }
+                bottomTabIds.forEach { tab ->
+                    val selected = rootTab == tab
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = {
+                            // Tapping the open section goes back to the head of that section.
+                            if (!selected) rootTab = tab
+                        },
+                        icon = { Text(BottomTab.markOf(tab)) },
+                        label = { Text(BottomTab.labelOf(tab), maxLines = 1) },
+                        alwaysShowLabel = true
+                    )
+                }
             }
         }
         }
@@ -1252,7 +1265,8 @@ private fun MoreSectionsScreen(
     onTaskTypes: () -> Unit,
     onSkills: () -> Unit,
     onMessages: () -> Unit,
-    onGoals: () -> Unit
+    onGoals: () -> Unit,
+    onBottomBar: () -> Unit
 ) {
     Column(
         Modifier
@@ -1270,6 +1284,7 @@ private fun MoreSectionsScreen(
         MoreSectionCard("رسائل الفريق", "إعلانات ومستجدّات تصل بدون تحديث التطبيق.", "✉", onMessages)
         MoreSectionCard("أهدافي", "أهداف كبيرة بمقياس ومهلة، وتقدّم يُسجّل خطوة بخطوة.", "◎", onGoals)
         MoreSectionCard("إحصاءاتي", "راجع وقت التركيز والمهام التي أنجزتها.", "◔", onAnalytics)
+        MoreSectionCard("الشريط السفلي", "اختر أقسام الشريط السفلي، ورتّبها، واحذف ما لا تحتاجه.", "▥", onBottomBar)
         MoreSectionCard("تخصيص التجربة", "اضبط اسمك وهدفك اليومي والتذكير والمظهر.", "⚙", onSettings)
         MoreSectionCard("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرًا محليًا.", "☾", onPrayerTimes)
         MoreSectionCard("تحديثات التطبيق", "افحص الإصدارات الجديدة واقرأ سجل التغييرات.", "↻", onUpdates)

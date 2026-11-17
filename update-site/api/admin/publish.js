@@ -1,6 +1,6 @@
 const { put } = require("@vercel/blob");
 const { isAdmin, originIsSame, parseBody, json } = require("../../lib/admin-auth");
-const { RELEASE_PATH, readLatestRelease } = require("../../lib/release-store");
+const { RELEASE_PATH, readLatestRelease, readFallbackRelease } = require("../../lib/release-store");
 
 module.exports = async function publishRelease(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "method_not_allowed" });
@@ -9,6 +9,37 @@ module.exports = async function publishRelease(req, res) {
 
   try {
     const body = parseBody(req.body);
+
+    // Keep the published record, the feed and the app on the same release. The deployment also
+    // ships release.json, so a build that lands without a Blob record would otherwise leave the
+    // site showing one version and the admin panel another.
+    if (body.action === "sync") {
+      const fallback = readFallbackRelease();
+      let stored = null;
+      try { stored = await readLatestRelease(); } catch { stored = null; }
+      const storedCode = Number(stored?.versionCode || 0);
+      const fallbackCode = Number(fallback?.versionCode || 0);
+      const winner = fallbackCode >= storedCode ? fallback : stored;
+      if (!winner || !Number(winner.versionCode)) return json(res, 400, { error: "release_feed_empty" });
+      if (winner === stored) {
+        return json(res, 200, { ok: true, changed: false, release: stored, source: "blob" });
+      }
+      await put(RELEASE_PATH, JSON.stringify(winner), {
+        access: "public",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType: "application/json; charset=utf-8",
+        cacheControlMaxAge: 60
+      });
+      return json(res, 200, {
+        ok: true,
+        changed: true,
+        release: winner,
+        source: "release.json",
+        replacedVersionCode: storedCode || null
+      });
+    }
+
     const versionCode = Number(body.versionCode);
     const versionName = String(body.versionName || "").trim();
     const releaseNotes = String(body.releaseNotes || "").trim().slice(0, 1600);

@@ -55,7 +55,9 @@ data class FocusPreferences(
     val quietEndHour: Int = 7,
     val reduceMotion: Boolean = false,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
-    val profile: UserProfile = UserProfile.GENERAL
+    val profile: UserProfile = UserProfile.GENERAL,
+    /** Ids of the sections kept in the bottom bar, in display order. */
+    val bottomTabs: List<String> = BottomTab.DEFAULT
 ) {
     companion object {
         internal const val FILE = "focus_study_preferences"
@@ -94,7 +96,14 @@ data class FocusPreferences(
                 quietEndHour = prefs.getInt("quiet_end_hour", 7).coerceIn(0, 23),
                 reduceMotion = prefs.getBoolean("reduce_motion", false),
                 themeMode = ThemeMode.from(prefs.getString("theme_mode", "system")),
-                profile = UserProfile.from(prefs.getString("profile", "general"))
+                profile = UserProfile.from(prefs.getString("profile", "general")),
+                bottomTabs = BottomTab.normalize(
+                    prefs.getString("bottom_tabs", null)
+                        ?.split(",")
+                        ?.map { it.trim() }
+                        ?.filter { it.isNotEmpty() }
+                        ?: BottomTab.DEFAULT
+                )
             )
         }
 
@@ -129,6 +138,7 @@ data class FocusPreferences(
                 .putBoolean("reduce_motion", value.reduceMotion)
                 .putString("theme_mode", value.themeMode.key)
                 .putString("profile", value.profile.key)
+                .putString("bottom_tabs", BottomTab.normalize(value.bottomTabs).joinToString(","))
                 .apply()
         }
     }

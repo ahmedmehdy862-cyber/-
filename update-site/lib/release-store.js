@@ -20,4 +20,9 @@ async function readLatestRelease() {
   return JSON.parse(fs.readFileSync(FALLBACK_PATH, "utf8"));
 }
 
-module.exports = { RELEASE_PATH, readLatestRelease };
+/** The copy shipped with the deployment; used when Blob has nothing newer. */
+function readFallbackRelease() {
+  return JSON.parse(fs.readFileSync(FALLBACK_PATH, "utf8"));
+}
+
+module.exports = { RELEASE_PATH, FALLBACK_PATH, readLatestRelease, readFallbackRelease };

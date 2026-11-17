@@ -57,6 +57,8 @@
           <p class="hint">أدخل الرقمين نفسيهما اللذين رفعتهما إلى المتجر، واجعل رقم الإصدار الداخلي أكبر من الحالي.</p>
           <div class="field"><label for="release-notes">ما الجديد؟</label><textarea id="release-notes" maxlength="1600" placeholder="اكتب التحسينات والإصلاحات التي سيلاحظها الطالب…" required></textarea></div>
           <div class="row-actions"><button id="logout" class="button secondary" type="button">تسجيل الخروج</button><button id="publish" class="button" type="submit">نشر إشعار التحديث</button></div>
+          <div class="row-actions" style="margin-top:12px"><button id="sync-release" class="button secondary" type="button">مزامنة الموجز مع التطبيق والموقع</button><span class="hint">يجعل الموجز المنشور مطابقًا لآخر إصدار في هذه النسخة من الموقع.</span></div>
+          <div id="sync-status" class="status" role="status" aria-live="polite"></div>
         </form>
         <div id="publish-status" class="status" role="status" aria-live="polite"></div>
         <div class="security"><span>🔒</span><span>هذا السجل يحدّث API التطبيق وبطاقة QUBIXStore معًا. ملف APK يستضاف في GitHub Release، وزر إشعار التطبيق يظل يفتح صفحة المتجر.</span></div>

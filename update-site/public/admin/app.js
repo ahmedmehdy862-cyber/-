@@ -5,6 +5,7 @@ const adminPanel = document.getElementById("admin-panel");
 const loginStatus = document.getElementById("login-status");
 const passwordPanel = document.getElementById("password-panel");
 const passwordStatus = document.getElementById("password-status");
+const syncStatus = document.getElementById("sync-status");
 const publishStatus = document.getElementById("publish-status");
 const storeStatus = document.getElementById("store-status");
 const publishButton = document.getElementById("publish");
@@ -166,6 +167,28 @@ document.getElementById("release-form").addEventListener("submit", async (event)
     showStatus(publishStatus, errorText(error), "error");
   } finally {
     publishButton.disabled = false;
+  }
+});
+
+document.getElementById("sync-release").addEventListener("click", async (event) => {
+  const button = event.currentTarget;
+  button.disabled = true;
+  showStatus(syncStatus, "جارٍ مزامنة الموجز…");
+  try {
+    const result = await callApi("/api/admin/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "sync" }) });
+    const release = result.release || {};
+    showStatus(
+      syncStatus,
+      result.changed
+        ? `تمت المزامنة: الموجز الآن ${release.versionName} · ${release.versionCode} ويعرضه الموقع والتطبيق وصفحة الإدارة.`
+        : `الموجز مطابق أصلًا (${release.versionName} · ${release.versionCode}).`,
+      "ok"
+    );
+    await loadCurrentRelease();
+  } catch (error) {
+    showStatus(syncStatus, errorText(error), "error");
+  } finally {
+    button.disabled = false;
   }
 });
 
