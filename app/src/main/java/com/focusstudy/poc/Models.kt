@@ -142,6 +142,9 @@ data class Skill(
 }
 
 /** A long-term goal measured by a number the person picks (دروس، ساعات، كتب…). */
+/** One task or skill that serves a goal; links are what make the three sections a path. */
+data class GoalLink(val kind: String, val refId: Long)
+
 data class Goal(
     val id: Long,
     val title: String,

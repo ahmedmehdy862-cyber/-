@@ -12,8 +12,18 @@ module.exports = async function messages(request, response) {
   try {
     const profile = String(request.query?.profile || "").trim();
     const version = Number(request.query?.version || 0);
+    const uid = String(request.query?.uid || "").trim().toLowerCase();
     const all = await readMessages();
+    // A message addressed to one install ignores the audience and version rules: it is personal.
+    const addressedToMe = (target) => {
+      const wanted = String(target || "").trim().toLowerCase();
+      if (!wanted) return null;
+      if (!uid) return false;
+      return uid === wanted || (wanted.length >= 8 && uid.startsWith(wanted));
+    };
     const messages = all.filter((item) => {
+      const personal = addressedToMe(item.targetUserId);
+      if (personal !== null) return personal;
       const audience = String(item.audienceProfile || "").trim();
       const minVersion = Number(item.minVersionCode || 0);
       if (audience && profile && audience !== profile) return false;

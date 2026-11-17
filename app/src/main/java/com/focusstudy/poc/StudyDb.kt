@@ -68,6 +68,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV10(db)
         migrateToV11(db)
         migrateToV12(db)
+        migrateToV13(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -82,6 +83,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 10) migrateToV10(db)
         if (oldVersion < 11) migrateToV11(db)
         if (oldVersion < 12) migrateToV12(db)
+        if (oldVersion < 13) migrateToV13(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -230,6 +232,73 @@ class StudyDb private constructor(context: Context) :
 
     fun deleteGoal(goalId: Long) {
         writableDatabase.delete("goals", "id = ?", arrayOf(goalId.toString()))
+        writableDatabase.delete("goal_links", "goal_id = ?", arrayOf(goalId.toString()))
+    }
+
+    /** Edit what a goal measures, its deadline and its label without losing progress. */
+    fun updateGoal(goalId: Long, title: String, target: Int, unit: String, category: String, dueAt: Long?) {
+        require(title.isNotBlank()) { "Goal title cannot be blank" }
+        require(target > 0) { "Goal target must be positive" }
+        val values = ContentValues().apply {
+            put("title", title.trim())
+            put("target", target)
+            put("unit", unit.trim().ifBlank { "خطوة" })
+            put("category", category.trim())
+            if (dueAt != null) put("due_at", dueAt) else putNull("due_at")
+        }
+        writableDatabase.update("goals", values, "id = ?", arrayOf(goalId.toString()))
+    }
+
+    /** Links a task or a skill to a goal; a task that is already done counts immediately. */
+    fun linkGoal(goalId: Long, kind: String, refId: Long) {
+        if (kind != "task" && kind != "skill") return
+        val done = kind == "task" && (task(refId)?.let { it.isDone || it.status == TaskStatus.DONE } ?: false)
+        writableDatabase.insertWithOnConflict(
+            "goal_links",
+            null,
+            ContentValues().apply {
+                put("goal_id", goalId)
+                put("kind", kind)
+                put("ref_id", refId)
+                put("awarded", 0)
+                put("created_at", System.currentTimeMillis())
+            },
+            SQLiteDatabase.CONFLICT_IGNORE
+        )
+        if (done) awardGoalLinksForTask(refId)
+    }
+
+    fun unlinkGoal(goalId: Long, kind: String, refId: Long) {
+        writableDatabase.delete(
+            "goal_links",
+            "goal_id = ? AND kind = ? AND ref_id = ?",
+            arrayOf(goalId.toString(), kind, refId.toString())
+        )
+    }
+
+    fun goalLinks(goalId: Long): List<GoalLink> = readableDatabase.rawQuery(
+        "SELECT kind, ref_id FROM goal_links WHERE goal_id = ? ORDER BY created_at ASC",
+        arrayOf(goalId.toString())
+    ).use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) add(GoalLink(cursor.getString(0).orEmpty(), cursor.getLong(1)))
+        }
+    }
+
+    /** One step per newly linked, completed task — called on every transition to done. */
+    fun awardGoalLinksForTask(taskId: Long) {
+        val db = writableDatabase
+        val goalIds = db.rawQuery(
+            "SELECT goal_id FROM goal_links WHERE kind = 'task' AND ref_id = ? AND awarded = 0",
+            arrayOf(taskId.toString())
+        ).use { cursor -> buildList { while (cursor.moveToNext()) add(cursor.getLong(0)) } }
+        goalIds.forEach { goalId ->
+            addGoalProgress(goalId, 1)
+            db.execSQL(
+                "UPDATE goal_links SET awarded = 1 WHERE goal_id = ? AND kind = 'task' AND ref_id = ?",
+                arrayOf<Any>(goalId, taskId)
+            )
+        }
     }
 
     fun skills(): List<Skill> = readableDatabase.rawQuery(
@@ -420,6 +489,29 @@ class StudyDb private constructor(context: Context) :
             )
             """.trimIndent()
         )
+    }
+
+    /**
+     * v13 — the goal path: which tasks and which skills serve a goal.
+     *
+     * `awarded` makes the link advance the goal exactly once, so reopening and completing a task
+     * again never double-counts. Links cascade away with the goal, the task or the skill.
+     */
+    private fun migrateToV13(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS goal_links(
+              goal_id INTEGER NOT NULL,
+              kind TEXT NOT NULL,
+              ref_id INTEGER NOT NULL,
+              awarded INTEGER NOT NULL DEFAULT 0,
+              created_at INTEGER NOT NULL,
+              PRIMARY KEY(goal_id, kind, ref_id)
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON goal_links(goal_id, kind)")
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_goal_links_ref ON goal_links(kind, ref_id)")
     }
 
     /** v11 — skills the person is developing, independent of tasks and sessions. */
@@ -813,6 +905,7 @@ class StudyDb private constructor(context: Context) :
             )
             if (status == TaskStatus.DONE && previous.status != TaskStatus.DONE) {
                 createNextRecurringTask(db, previous)
+                awardGoalLinksForTask(taskId)
             }
             db.setTransactionSuccessful()
         } finally {
@@ -1059,6 +1152,7 @@ class StudyDb private constructor(context: Context) :
             val updated = task(taskId)
             if (previous != null && updated?.status == TaskStatus.DONE && previous.status != TaskStatus.DONE) {
                 createNextRecurringTask(db, previous)
+                awardGoalLinksForTask(taskId)
             }
             db.setTransactionSuccessful()
         } finally {
@@ -1253,7 +1347,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 12
+        private const val DB_VERSION = 13
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

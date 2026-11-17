@@ -64,7 +64,7 @@ object TeamMessages {
 
     suspend fun fetch(context: Context): List<TeamMessage> = withContext(Dispatchers.IO) {
         val profile = FocusPreferences.load(context).profile.key
-        val query = "?profile=$profile&version=${versionCode(context)}"
+        val query = "?profile=$profile&version=${versionCode(context)}&uid=${UserIdentity.id(context)}"
         val remote = runCatching { request("$BASE/api/messages$query", "GET", null) }.getOrNull()
         val messages = remote?.let { parseMessages(it) }.orEmpty()
         if (messages.isNotEmpty()) {
@@ -99,7 +99,9 @@ object TeamMessages {
         if (unseen.isEmpty()) return
         seen.addAll(unseen.map { it.id })
         prefs(context).edit().putStringSet(SEEN, seen).apply()
-        TeamNotifier.notify(context, unseen.first())
+        // Every message reaches the notification shade, not just the newest one: after a few days
+        // offline a person would otherwise never learn about the ones in between.
+        TeamNotifier.notifyEach(context, unseen)
     }
 
     private const val SEEN = "seen"
@@ -165,6 +167,7 @@ object TeamMessages {
                     .put("contact", contact)
                     .put("body", body)
                     .put("version", versionName(context))
+                    .put("uid", UserIdentity.id(context))
                     .toString()
                 request("$BASE/api/support", "POST", payload)
                 true
@@ -262,6 +265,24 @@ internal fun TeamMessagesScreen(onBack: () -> Unit) {
 /** Local notification so an announcement is not missed when the app is closed. */
 internal object TeamNotifier {
     private const val CHANNEL = "team_messages"
+    private const val MAX_INDIVIDUAL = 4
+
+    /** One notification per message, then a count for the rest so the shade never floods. */
+    fun notifyEach(context: Context, messages: List<TeamMessage>) {
+        messages.take(MAX_INDIVIDUAL).forEach { notify(context, it) }
+        val rest = messages.size - MAX_INDIVIDUAL
+        if (rest > 0) {
+            notify(
+                context,
+                TeamMessage(
+                    id = "team-digest-${messages.first().id}",
+                    title = "وصلتك $rest رسائل أخرى من الفريق",
+                    body = "افتح «رسائل الفريق» لقراءتها كلها.",
+                    at = messages.first().at
+                )
+            )
+        }
+    }
 
     fun notify(context: Context, message: TeamMessage) {
         val manager = context.getSystemService(NotificationManager::class.java) ?: return

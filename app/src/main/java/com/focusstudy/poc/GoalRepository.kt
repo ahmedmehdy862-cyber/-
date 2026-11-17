@@ -20,6 +20,22 @@ class GoalRepository private constructor(private val db: StudyDb) {
 
     suspend fun delete(goalId: Long) = io { db.deleteGoal(goalId) }
 
+    suspend fun edit(goalId: Long, title: String, target: Int, unit: String, category: String, dueAt: Long?) =
+        io { db.updateGoal(goalId, title, target, unit, category, dueAt) }
+
+    suspend fun links(goalId: Long): List<GoalLink> = io { db.goalLinks(goalId) }
+
+    suspend fun link(goalId: Long, kind: String, refId: Long) = io { db.linkGoal(goalId, kind, refId) }
+
+    suspend fun unlink(goalId: Long, kind: String, refId: Long) = io { db.unlinkGoal(goalId, kind, refId) }
+
+    suspend fun tasks(): List<StudyTask> = io { db.tasks() }
+
+    /** Completing a linked task is what moves its goal forward. */
+    suspend fun setTaskStatus(taskId: Long, status: TaskStatus) = io { db.setTaskStatus(taskId, status) }
+
+    suspend fun skills(): List<Skill> = io { db.skills() }
+
     private suspend fun <T> io(block: () -> T): T = withContext(Dispatchers.IO) { block() }
 
     companion object {

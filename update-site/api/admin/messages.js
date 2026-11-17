@@ -32,6 +32,9 @@ module.exports = async function adminMessages(req, res) {
       String(body.audienceProfile || "")
     ) ? String(body.audienceProfile || "") : "";
     const minVersionCode = Math.max(0, Math.min(1_000_000, Number(body.minVersionCode || 0) || 0));
+    const rawTarget = String(body.targetUserId || "").trim().toLowerCase();
+    if (rawTarget && !/^[a-z0-9-]{6,64}$/.test(rawTarget)) return json(res, 400, { error: "invalid_target_user" });
+    const targetUserId = rawTarget;
     if (title.length < 3 || text.length < 3) return json(res, 400, { error: "title_and_body_required" });
     const message = {
       id: `m-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -39,6 +42,7 @@ module.exports = async function adminMessages(req, res) {
       body: text,
       audienceProfile,
       minVersionCode,
+      targetUserId,
       at: new Date().toISOString(),
     };
     return json(res, 200, { ok: true, messages: await appendMessage(message) });

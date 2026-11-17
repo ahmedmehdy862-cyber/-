@@ -19,6 +19,7 @@ module.exports = async function support(request, response) {
       contact: cut(body.contact, 120),
       body: text,
       version: cut(body.version, 32),
+      uid: cut(body.uid, 64),
       at: new Date().toISOString(),
       status: "new",
     };

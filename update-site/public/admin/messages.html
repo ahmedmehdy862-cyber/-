@@ -50,6 +50,10 @@
         <label class="meta" for="min-version">من إصدار</label>
         <input id="min-version" type="number" min="0" max="1000000" value="0" style="width:130px">
       </div>
+      <div class="row">
+        <label class="meta" for="target-user">لمستخدم بعينه (معرّف الجهاز)</label>
+        <input id="target-user" maxlength="64" placeholder="اتركه فارغًا للجميع — أو الصق معرّفًا من صندوق الدعم">
+      </div>
       <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
     </div>
 
@@ -74,7 +78,7 @@
     box.innerHTML = messages.map((item) => `
       <div class="item">
         <div><strong>${esc(item.title)}</strong><div class="meta">${esc(item.body)}</div>
-        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}</div></div>
+        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}${item.targetUserId ? " · لجهاز " + esc(item.targetUserId) : ""}</div></div>
         <button class="ghost" data-delete="${esc(item.id)}">حذف</button>
       </div>`).join("");
     box.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
@@ -91,7 +95,7 @@
       <div class="item">
         <div><strong>${esc(item.name || "بدون اسم")}</strong> <span class="${item.status === "new" ? "new" : "handled"}">${item.status === "new" ? "جديدة" : "تمّت"}</span>
           <div>${esc(item.body)}</div>
-          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}</div></div>
+          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}${item.uid ? ` · معرّف <button class="link" data-uid="${esc(item.uid)}">${esc(item.uid.slice(0, 8))}</button>` : ""}</div></div>
         <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
       </div>`).join("");
     box.querySelectorAll("[data-mark]").forEach((btn) => btn.addEventListener("click", async () => {
@@ -101,7 +105,18 @@
   }
 
   async function load() {
-    const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/messages?view=inbox")]);
+    // Copying a sender's id is how the team answers one person instead of everyone.
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-uid]");
+  if (!button) return;
+  const field = document.getElementById("target-user");
+  if (!field) return;
+  field.value = button.dataset.uid;
+  field.focus();
+  button.textContent = "نُسخ";
+});
+
+const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/messages?view=inbox")]);
     if (messages.status === 401 || inbox.status === 401) {
       document.getElementById("login-card").hidden = false;
       document.getElementById("panel").hidden = true;
@@ -121,7 +136,8 @@
     if (title.length < 3 || body.length < 3) { status.textContent = "اكتب عنوانًا ونصًا واضحًا."; return; }
     const audienceProfile = document.getElementById("audience").value;
     const minVersionCode = Number(document.getElementById("min-version").value || 0);
-    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode }) });
+    const targetUserId = document.getElementById("target-user").value.trim();
+    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode, targetUserId }) });
     status.textContent = res.ok ? "نُشرت الرسالة." : "تعذر النشر.";
     if (res.ok) { document.getElementById("title").value = ""; document.getElementById("body").value = ""; load(); }
   });
