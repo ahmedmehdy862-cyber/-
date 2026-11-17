@@ -336,6 +336,7 @@ class MainActivity : ComponentActivity() {
                         onRequestNotifications = ::requestNotificationPermissionIfNeeded,
                         onGrantVpn = ::grantVpnConsent,
                         openUpdatesInitially = intent?.getBooleanExtra(AppUpdateManager.EXTRA_OPEN_UPDATES, false) == true,
+                        openTasksInitially = intent?.getBooleanExtra(StudyNotificationScheduler.EXTRA_OPEN_TASKS, false) == true,
                         autoStartTaskId = intent?.getLongExtra(ReminderEngine.EXTRA_TASK_ID, 0L)?.takeIf { it > 0 }
 
                     )
@@ -450,6 +451,7 @@ private fun AppRoot(
     onRequestNotifications: () -> Unit,
     onGrantVpn: () -> Unit,
     openUpdatesInitially: Boolean,
+    openTasksInitially: Boolean = false,
     autoStartTaskId: Long? = null
 
 ) {
@@ -510,7 +512,9 @@ private fun AppRoot(
 
     var pickerTaskId by remember { mutableStateOf<Long?>(null) }
 
-    var rootTab by rememberSaveable { mutableStateOf(if (openUpdatesInitially) "updates" else "today") }
+    var rootTab by rememberSaveable {
+        mutableStateOf(if (openUpdatesInitially) "updates" else if (openTasksInitially) "tasks" else "today")
+    }
     var previousRootTab by rememberSaveable { mutableStateOf(if (openUpdatesInitially) "more" else "today") }
     fun openSecondary(tab: String) {
         previousRootTab = rootTab
@@ -678,7 +682,14 @@ private fun AppRoot(
                     onOpenAllTasks = { rootTab = "tasks" },
                     onOpenMessages = { openSecondary("messages") },
                     preferences = preferences,
-                    addRequest = quickAddTask
+                    addRequest = quickAddTask,
+                    onToggleTheme = {
+                        onPreferencesChanged(
+                            preferences.copy(
+                                themeMode = if (preferences.themeMode == ThemeMode.LIGHT) ThemeMode.DARK else ThemeMode.LIGHT
+                            )
+                        )
+                    }
 
                 )
 
@@ -743,7 +754,8 @@ private fun TasksScreen(
     onOpenAllTasks: () -> Unit,
     onOpenMessages: () -> Unit,
     preferences: FocusPreferences,
-    addRequest: Int = 0
+    addRequest: Int = 0,
+    onToggleTheme: () -> Unit = {}
 
 ) {
 
@@ -901,6 +913,17 @@ private fun TasksScreen(
 
             }
 
+            TextButton(
+                onClick = onToggleTheme,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 6.dp)
+            ) {
+                Text(
+                    if (preferences.themeMode == ThemeMode.LIGHT) "☾" else "☀",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = FocusColors.TextSecondary
+                )
+            }
+
             Button(
 
                 onClick = { showAddDialog = true },
@@ -931,7 +954,15 @@ private fun TasksScreen(
 
         if (dashboard) {
             // The day dashboard is taller than one screen on small phones, so it scrolls.
-            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState())) {
+            // Bottom padding keeps the day cards clear of the floating + button.
+            Column(Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(bottom = 84.dp)) {
+            Spacer(Modifier.height(12.dp))
+            val todayTasksForWelcome = tasks.filter { it.dueAt.isOnLocalDate(java.time.LocalDate.now()) }
+            WelcomeGreeting(
+                name = preferences.studentName,
+                openToday = todayTasksForWelcome.count { !it.isDone && it.status != TaskStatus.DONE },
+                doneToday = todayTasksForWelcome.count { it.isDone || it.status == TaskStatus.DONE }
+            )
             Spacer(Modifier.height(12.dp))
             StudyCompanionCard(preferences, tasks)
             Spacer(Modifier.height(12.dp))

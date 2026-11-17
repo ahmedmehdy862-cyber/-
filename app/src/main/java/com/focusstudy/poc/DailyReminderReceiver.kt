@@ -20,6 +20,7 @@ import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
 
 internal object StudyNotificationScheduler {
+    const val EXTRA_OPEN_TASKS = "com.focusstudy.poc.OPEN_TASKS"
     const val ACTION_TASK_NUDGE = "com.focusstudy.poc.TASK_NUDGE"
     const val ACTION_MORNING = "com.focusstudy.poc.MORNING_MESSAGE"
     const val ACTION_EVENING = "com.focusstudy.poc.EVENING_MESSAGE"
@@ -145,17 +146,32 @@ internal object StudyNotificationScheduler {
             }.thenByDescending { it.priority.level }.thenBy { it.dueAt ?: Long.MAX_VALUE }
         ).first()
         val name = FocusPreferences.load(context).studentName.trim()
-        val greeting = if (name.isBlank()) "ما زالت عندك مهام مفتوحة" else "يا $name، ما زالت عندك مهام مفتوحة"
-        val message = "$greeting (${pending.size}). خُد خطوة الآن: ${nextTask.title}"
+        val overdue = pending.count { task ->
+            task.dueAt?.let {
+                java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneId.systemDefault()).toLocalDate()
+                    .isBefore(java.time.LocalDate.now())
+            } == true
+        }
+        val greeting = when {
+            name.isBlank() -> "عندك ${pending.size} مهام تنتظرك"
+            else -> "يا $name، عندك ${pending.size} مهام تنتظرك"
+        }
+        val opener = when {
+            overdue > 0 -> "منها $overdue متأخرة — نبدأ بأصغر واحدة."
+            pending.size == 1 -> "واحدة فقط، والخطوة الأولى أقرب مما تظن."
+            else -> "أقرب خطوة: ${nextTask.title}"
+        }
+        val message = "$greeting. $opener"
         post(
             context,
             channelId = TASK_CHANNEL,
             channelName = "تذكيرات المهام الأساسية",
             description = "تذكير متكرر بالمهام غير المكتملة، ويتوقف تلقائيًا أثناء جلسة التركيز.",
             notificationId = TASK_NOTIFICATION_ID,
-            title = "متابعة مهامك",
+            title = "خطوة واحدة تكفي الآن",
             message = message,
-            highPriority = true
+            highPriority = true,
+            openTasks = true
         )
     }
 
@@ -164,17 +180,29 @@ internal object StudyNotificationScheduler {
         val enabled = prefs.generalNotificationsEnabled &&
             if (morning) prefs.morningMessageEnabled else prefs.eveningMessageEnabled
         if (!enabled || !notificationsAllowed(context)) return
-        val name = prefs.studentName.trim().ifBlank { "بطل مُنظِّم" }
+        val name = prefs.studentName.trim().ifBlank { "يا بطل" }
+        val today = java.time.LocalDate.now()
+        val open = StudyDb.get(context).tasks().filter {
+            !it.isDone && it.status != TaskStatus.DONE && it.status != TaskStatus.CANCELLED
+        }
+        val dueToday = open.filter { it.dueAt?.let { end -> java.time.Instant.ofEpochMilli(end).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == today } == true }
+        val opening = when {
+            dueToday.isNotEmpty() && morning -> "مهام اليوم جاهزة (${dueToday.size}). ابدأ بأخفّها لتبني الإيقاع."
+            dueToday.isNotEmpty() -> "بقيت ${dueToday.size} مهام لليوم. عشر دقائق الآن تُغلق واحدة."
+            open.isNotEmpty() && morning -> "لا شيء مجدول اليوم. اختر من ${open.size} مهام مفتوحة واحدة صغيرة."
+            morning -> "لا مهام بعد. مهمة واحدة تكفي ليكون ليومك اتجاه."
+            else -> "لا شيء ينتظرك الليلة. اكتب مهمة لبكرة وأنت مرتاح."
+        }
         val messages = if (morning) listOf(
-            "صباحك فرصة جديدة، ابدأ بأصغر خطوة وهتلاقي يومك بيتحرك.",
-            "كل إنجاز كبير بدأ بتركيز بسيط. اختار أول مهمة وابدأ.",
-            "خلي هدفك واضح وخطوتك صغيرة. يوم مذاكرة موفق!"
+            "صباحك فرصة جديدة. ابدأ بأصغر خطوة وسترى اليوم يتحرك.",
+            "الإنجاز الكبير يبدأ بتركيز بسيط. اختر أول مهمة الآن.",
+            "اجعل هدفك واضحًا وخطوتك صغيرة، وسهّل على نفسك البداية."
         ) else listOf(
-            "اقفل يومك بفخر على اللي أنجزته، وجهّز خطوة بكرة.",
-            "حتى لو أنجزت جزءًا صغيرًا، ده تقدم يستحق التقدير. تصبح على خير.",
-            "راجع تقدمك بهدوء وخد راحتك. بكرة فرصة جديدة تكمل فيها."
+            "اقفل يومك بفخر على ما أنجزته، وجهّز خطوة لبكرة.",
+            "حتى الإنجاز الصغير تقدّم يستحق التقدير. تصبح على خير.",
+            "راجع تقدّمك بهدوء وخُذ راحتك. بكرة فرصة جديدة."
         )
-        val message = "$name، ${messages[java.time.LocalDate.now().dayOfYear % messages.size]}"
+        val message = "$name، ${messages[today.dayOfYear % messages.size]} — " + opening
         post(
             context,
             channelId = GENERAL_CHANNEL,
@@ -184,7 +212,8 @@ internal object StudyNotificationScheduler {
             title = if (morning) "صباح الخير ☀️" else "مساء التقدم 🌙",
             message = message,
             highPriority = false,
-            avatarPath = prefs.avatarPath
+            avatarPath = prefs.avatarPath,
+            openTasks = dueToday.isEmpty()
         )
     }
 
@@ -204,7 +233,8 @@ internal object StudyNotificationScheduler {
         title: String,
         message: String,
         highPriority: Boolean,
-        avatarPath: String = ""
+        avatarPath: String = "",
+        openTasks: Boolean = false
     ) {
         val manager = notificationManager(context)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -219,7 +249,9 @@ internal object StudyNotificationScheduler {
         val openApp = PendingIntent.getActivity(
             context,
             notificationId,
-            Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            Intent(context, MainActivity::class.java)
+                .putExtra(EXTRA_OPEN_TASKS, openTasks)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val builder = NotificationCompat.Builder(context, channelId)
