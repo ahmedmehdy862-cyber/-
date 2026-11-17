@@ -534,6 +534,7 @@ private fun AppRoot(
 
     // System back must return to the previous screen instead of leaving the app.
     val bottomTabIds = remember(preferences.bottomTabs) { BottomTab.normalize(preferences.bottomTabs) }
+    var quickAddTask by remember { mutableStateOf(0) }
     androidx.activity.compose.BackHandler(
         enabled = screen != "session" && screen != "onboarding" && screen !in bottomTabIds
     ) {
@@ -676,7 +677,8 @@ private fun AppRoot(
                     dashboard = current == "today",
                     onOpenAllTasks = { rootTab = "tasks" },
                     onOpenMessages = { openSecondary("messages") },
-                    preferences = preferences
+                    preferences = preferences,
+                    addRequest = quickAddTask
 
                 )
 
@@ -703,6 +705,22 @@ private fun AppRoot(
         }
         }
 
+        if (screen in setOf("today", "tasks")) {
+            // Floats over the corner the bar leaves empty; the list opens upwards from it.
+            QuickAddFab(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .windowInsetsPadding(WindowInsets.safeDrawing)
+                    .padding(end = 18.dp, bottom = 104.dp),
+                onAddTask = {
+                    rootTab = "tasks"
+                    quickAddTask++
+                },
+                onAddSkill = { openSecondary("skills") },
+                onAddGoal = { openSecondary("goals") }
+            )
+        }
+
     }
 
 }
@@ -724,7 +742,8 @@ private fun TasksScreen(
     dashboard: Boolean,
     onOpenAllTasks: () -> Unit,
     onOpenMessages: () -> Unit,
-    preferences: FocusPreferences
+    preferences: FocusPreferences,
+    addRequest: Int = 0
 
 ) {
 
@@ -751,6 +770,8 @@ private fun TasksScreen(
     val totalMinutes = ui.totalMinutes
 
     var showAddDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(addRequest) { if (addRequest > 0) showAddDialog = true }
 
     var showEditDialog by remember { mutableStateOf(false) }
 
@@ -1011,7 +1032,9 @@ private fun TasksScreen(
 
             modifier = Modifier.fillMaxWidth().weight(1f),
 
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            // Leaves room for the floating + button so the last card is never hidden under it.
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(bottom = 96.dp)
 
         ) {
 
@@ -1276,39 +1299,81 @@ private fun MoreSectionsScreen(
     ) {
         Text("المزيد", style = MaterialTheme.typography.headlineSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
-        Text("أدوات تساعدك على التخطيط ومراجعة تقدمك وتخصيص تجربتك.", style = MaterialTheme.typography.bodyMedium, color = FocusColors.TextSecondary)
-        Spacer(Modifier.height(16.dp))
-        MoreSectionCard("الخطة الأسبوعية", "حوّل مهامك إلى جلسات مذاكرة قابلة للتنفيذ.", "↗", onPlanner)
-        MoreSectionCard("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes)
-        MoreSectionCard("مهاراتي", "سجّل المهارات التي تطوّرها، ودقائق التدريب ومستواك فيها.", "✦", onSkills)
-        MoreSectionCard("رسائل الفريق", "إعلانات ومستجدّات تصل بدون تحديث التطبيق.", "✉", onMessages)
-        MoreSectionCard("أهدافي", "أهداف كبيرة بمقياس ومهلة، وتقدّم يُسجّل خطوة بخطوة.", "◎", onGoals)
-        MoreSectionCard("إحصاءاتي", "راجع وقت التركيز والمهام التي أنجزتها.", "◔", onAnalytics)
-        MoreSectionCard("الشريط السفلي", "اختر أقسام الشريط السفلي، ورتّبها، واحذف ما لا تحتاجه.", "▥", onBottomBar)
-        MoreSectionCard("تخصيص التجربة", "اضبط اسمك وهدفك اليومي والتذكير والمظهر.", "⚙", onSettings)
-        MoreSectionCard("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرًا محليًا.", "☾", onPrayerTimes)
-        MoreSectionCard("تحديثات التطبيق", "افحص الإصدارات الجديدة واقرأ سجل التغييرات.", "↻", onUpdates)
-        MoreSectionCard("الدعم الفني", "تواصل معنا إذا احتجت إلى مساعدة.", "?", onSupport)
+        Text("أدواتك مجمّعة في أربع مجموعات بدل قائمة طويلة.", style = MaterialTheme.typography.bodyMedium, color = FocusColors.TextSecondary)
+        Spacer(Modifier.height(14.dp))
+
+        MoreGroup(
+            "التخطيط والتقدّم",
+            "كيف يتحوّل يومك إلى خطة، وكيف تقيس ما أنجزته",
+            listOf(
+                MoreItem("الخطة الأسبوعية", "حوّل مهامك إلى جلسات قابلة للتنفيذ.", "↗", onPlanner),
+                MoreItem("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes),
+                MoreItem("إحصاءاتي", "راجع وقت التركيز والمهام المنجزة.", "◔", onAnalytics)
+            )
+        )
+        MoreGroup(
+            "أهدافي وتطويري",
+            "الصورة الكبيرة والمهارات التي تبنيها",
+            listOf(
+                MoreItem("أهدافي", "أهداف بمقياس ومهلة، ومهام ومهارات مرتبطة بها.", "◎", onGoals),
+                MoreItem("مهاراتي", "سجّل المهارات التي تطوّرها ودقائق تدريبك.", "✦", onSkills)
+            )
+        )
+        MoreGroup(
+            "التخصيص والتنبيهات",
+            "شكل التطبيق وما يذكّرك به",
+            listOf(
+                MoreItem("تخصيص التجربة", "اسمك وهدفك اليومي والمظهر والملف.", "⚙", onSettings),
+                MoreItem("الشريط السفلي", "اختر أقسام الشريط السفلي ورتّبها.", "▥", onBottomBar),
+                MoreItem("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرها.", "☾", onPrayerTimes)
+            )
+        )
+        MoreGroup(
+            "الفريق والتحديثات",
+            "ما يصل منّا، وما يصل للتطبيق",
+            listOf(
+                MoreItem("رسائل الفريق", "إعلانات ومستجدّات بدون تحديث التطبيق.", "✉", onMessages),
+                MoreItem("تحديثات التطبيق", "افحص الإصدارات الجديدة واقرأ سجل التغييرات.", "↻", onUpdates),
+                MoreItem("الدعم الفني", "تواصل معنا إذا احتجت إلى مساعدة.", "?", onSupport)
+            )
+        )
+        Spacer(Modifier.height(20.dp))
     }
 }
 
+private data class MoreItem(val title: String, val description: String, val mark: String, val onClick: () -> Unit)
+
+/** One theme per card: the card header names the theme, the rows inside stay one tap away. */
 @Composable
-private fun MoreSectionCard(title: String, description: String, mark: String, onClick: () -> Unit) {
+private fun MoreGroup(title: String, subtitle: String, items: List<MoreItem>) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp).clickable(onClick = onClick),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
         colors = CardDefaults.cardColors(containerColor = FocusColors.Surface),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(22.dp)
     ) {
-        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(FocusColors.SurfaceHigh), contentAlignment = Alignment.Center) {
-                Text(mark, style = MaterialTheme.typography.titleMedium, color = FocusColors.onTint(FocusColors.Blue), fontWeight = FontWeight.Bold)
+        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = FocusColors.TextMuted)
+            Spacer(Modifier.height(6.dp))
+            items.forEachIndexed { index, item ->
+                if (index > 0) {
+                    Box(Modifier.fillMaxWidth().height(1.dp).background(FocusColors.Outline.copy(alpha = 0.5f)))
+                }
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = item.onClick).padding(vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(FocusColors.SurfaceHigh), contentAlignment = Alignment.Center) {
+                        Text(item.mark, style = MaterialTheme.typography.titleSmall, color = FocusColors.onTint(FocusColors.Blue), fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(item.title, style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Text(item.description, style = MaterialTheme.typography.labelSmall, color = FocusColors.TextSecondary)
+                    }
+                    Text("‹", style = MaterialTheme.typography.titleLarge, color = FocusColors.TextMuted)
+                }
             }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.SemiBold)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = FocusColors.TextSecondary)
-            }
-            Text("‹", style = MaterialTheme.typography.titleLarge, color = FocusColors.TextMuted)
         }
     }
 }
