@@ -67,7 +67,35 @@ object FocusColors {
         Brush.verticalGradient(listOf(Ink, Navy, Color(0xFF0D2033)))
     }
 
-    val hero get() = Brush.linearGradient(listOf(Color(0xFF142B45), Color(0xFF0E7C74)))
+    /**
+     * Focus card. It stays a deep surface in both modes because the copy on it is white, but the
+     * light scheme uses a softer teal-navy pair instead of near-black.
+     */
+    val hero get() = if (lightMode) {
+        Brush.linearGradient(listOf(Color(0xFF12414E), Color(0xFF0E7C74)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF142B45), Color(0xFF0E7C74)))
+    }
+
+    // ---- the mark itself, so the logo reads well on both schemes ----------------------------
+    /** Tile behind the mark: deep navy at night, a clean ice surface in daylight. */
+    val LogoTile get() = if (lightMode) {
+        Brush.linearGradient(listOf(Color(0xFFFFFFFF), Color(0xFFE4EEF7)))
+    } else {
+        Brush.linearGradient(listOf(Color(0xFF1B3350), Color(0xFF0C1B2B)))
+    }
+
+    /** Hairline around the light tile so it separates from a white card without a shadow. */
+    val LogoRing get() = token(Color(0x00FFFFFF), Color(0xFFCFDEEB))
+
+    /** The left hook: near-white at night, deep ink by day so it never disappears. */
+    val LogoInk get() = token(Color(0xFFF7F8FA), Color(0xFF13293E))
+
+    /** Hooks and cube accent: bright teal at night, a deeper teal for daylight contrast. */
+    val LogoAccent get() = token(Color(0xFF16B8A6), Color(0xFF0C6E67))
+
+    /** Background glows: vivid at night, quiet enough not to muddy a light page. */
+    val glowStrength get() = if (lightMode) 0.10f else 0.22f
 
     /**
      * Accent colours are tuned for fills, not for small text: lifted towards white on the dark

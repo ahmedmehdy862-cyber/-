@@ -34,16 +34,27 @@ import androidx.compose.ui.unit.dp
  */
 @Composable
 fun FocusLogo(modifier: Modifier = Modifier, size: Dp = 56.dp, showTile: Boolean = true) {
+    val light = FocusColors.lightMode
+    val tile = FocusColors.LogoTile
+    val ring = FocusColors.LogoRing
+    val ink = FocusColors.LogoInk
+    val accent = FocusColors.LogoAccent
     Canvas(modifier.size(size)) {
         val w = this.size.width
         val h = this.size.height
 
         if (showTile) {
-            drawRoundRect(
-                brush = Brush.linearGradient(listOf(FocusColors.Navy, Color(0xFF0C1B2B))),
-                cornerRadius = CornerRadius(w * 0.28f, h * 0.28f),
-                size = Size(w, h)
-            )
+            // Night keeps the deep navy tile from the brand sheet; daylight swaps it for an ice
+            // surface, so the mark is no longer white-on-black inside a light screen.
+            drawRoundRect(brush = tile, cornerRadius = CornerRadius(w * 0.28f, h * 0.28f), size = Size(w, h))
+            if (light) {
+                drawRoundRect(
+                    color = ring,
+                    cornerRadius = CornerRadius(w * 0.28f, h * 0.28f),
+                    size = Size(w, h),
+                    style = Stroke(width = w * 0.012f)
+                )
+            }
         }
 
         val strokeWidth = w * (12f / 108f)
@@ -60,7 +71,7 @@ fun FocusLogo(modifier: Modifier = Modifier, size: Dp = 56.dp, showTile: Boolean
         }
         drawPath(
             path = left,
-            color = Color.White,
+            color = ink,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
@@ -72,7 +83,7 @@ fun FocusLogo(modifier: Modifier = Modifier, size: Dp = 56.dp, showTile: Boolean
         }
         drawPath(
             path = right,
-            color = FocusColors.Teal,
+            color = accent,
             style = Stroke(width = strokeWidth, cap = StrokeCap.Round, join = StrokeJoin.Round)
         )
 
@@ -85,14 +96,16 @@ fun FocusLogo(modifier: Modifier = Modifier, size: Dp = 56.dp, showTile: Boolean
             lineTo(sx(34f), sy(29f))
             close()
         }
-        drawPath(path = cube, color = FocusColors.Teal)
+        drawPath(path = cube, color = accent)
         drawPath(
             path = cube,
-            color = FocusColors.Teal,
+            color = accent,
             style = Stroke(width = w * (5f / 108f), join = StrokeJoin.Round)
         )
     }
 }
+
+private fun accentForGlow(): Color = FocusColors.Teal
 
 /** Deep navy background with one drifting teal glow; matches the brand sheet. */
 @Composable
@@ -117,7 +130,7 @@ fun BrandBackground(animate: Boolean = true, content: @Composable BoxScope.() ->
             val tealCenter = Offset(size.width * (0.15f + 0.2f * drift), -radius * 0.2f)
             drawCircle(
                 brush = Brush.radialGradient(
-                    listOf(FocusColors.Teal.copy(alpha = 0.22f), Color.Transparent),
+                    listOf(accentForGlow().copy(alpha = FocusColors.glowStrength), Color.Transparent),
                     center = tealCenter,
                     radius = radius
                 ),
@@ -128,7 +141,7 @@ fun BrandBackground(animate: Boolean = true, content: @Composable BoxScope.() ->
             val navyRadius = size.minDimension * 0.8f
             drawCircle(
                 brush = Brush.radialGradient(
-                    listOf(FocusColors.BlueDeep.copy(alpha = 0.22f), Color.Transparent),
+                    listOf(FocusColors.BlueDeep.copy(alpha = FocusColors.glowStrength), Color.Transparent),
                     center = navyCenter,
                     radius = navyRadius
                 ),
