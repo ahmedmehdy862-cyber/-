@@ -21,7 +21,13 @@ module.exports = async function publishFromCi(req, res) {
       return json(res, 400, { error: "release_fields_required" });
     }
     const current = await readLatestRelease();
-    if (versionCode <= Number(current.versionCode || 0)) return json(res, 409, { error: "version_code_must_increase", currentVersionCode: current.versionCode });
+    const currentCode = Number(current.versionCode || 0);
+    // A re-run of the same tag must not fail: the feed already carries this build because the
+    // deployment ships release.json. Only a lower or conflicting version is refused.
+    if (versionCode === currentCode && String(current.versionName) === versionName) {
+      return json(res, 200, { ok: true, unchanged: true, release: current });
+    }
+    if (versionCode <= currentCode) return json(res, 409, { error: "version_code_must_increase", currentVersionCode: current.versionCode });
 
     const validHttps = (value) => {
       try {
