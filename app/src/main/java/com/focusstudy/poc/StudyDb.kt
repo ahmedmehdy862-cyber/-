@@ -67,6 +67,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV9(db)
         migrateToV10(db)
         migrateToV11(db)
+        migrateToV12(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -80,6 +81,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 9) migrateToV9(db)
         if (oldVersion < 10) migrateToV10(db)
         if (oldVersion < 11) migrateToV11(db)
+        if (oldVersion < 12) migrateToV12(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -159,6 +161,76 @@ class StudyDb private constructor(context: Context) :
     }
 
     // -------------------------------------------------------------- task types
+
+    fun goals(): List<Goal> = readableDatabase.rawQuery(
+        "SELECT id, title, target, current, unit, category, due_at, status, created_at " +
+            "FROM goals ORDER BY (status = 'done'), COALESCE(due_at, 9223372036854775807), id DESC",
+        null
+    ).use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) {
+                add(
+                    Goal(
+                        id = cursor.getLong(0),
+                        title = cursor.getString(1).orEmpty(),
+                        target = cursor.getInt(2),
+                        current = cursor.getInt(3),
+                        unit = cursor.getString(4).orEmpty(),
+                        category = cursor.getString(5).orEmpty(),
+                        dueAt = if (cursor.isNull(6)) null else cursor.getLong(6),
+                        status = cursor.getString(7).orEmpty(),
+                        createdAt = cursor.getLong(8)
+                    )
+                )
+            }
+        }
+    }
+
+    fun addGoal(title: String, target: Int, unit: String, dueAt: Long?, category: String): Long {
+        require(title.isNotBlank()) { "Goal title cannot be blank" }
+        require(target > 0) { "Goal target must be positive" }
+        val values = ContentValues().apply {
+            put("title", title.trim())
+            put("target", target)
+            put("current", 0)
+            put("unit", unit.trim().ifBlank { "خطوة" })
+            put("category", category.trim())
+            if (dueAt != null) put("due_at", dueAt) else putNull("due_at")
+            put("status", "active")
+            put("created_at", System.currentTimeMillis())
+        }
+        return writableDatabase.insert("goals", null, values)
+    }
+
+    fun setGoalProgress(goalId: Long, current: Int) {
+        val database = writableDatabase
+        val target = database.rawQuery("SELECT target FROM goals WHERE id = ?", arrayOf(goalId.toString()))
+            .use { if (it.moveToFirst()) it.getInt(0) else 0 }
+        val clamped = current.coerceIn(0, if (target > 0) target else current.coerceAtLeast(0))
+        database.execSQL(
+            "UPDATE goals SET current = ?, status = CASE WHEN ? >= target THEN 'done' ELSE status END WHERE id = ?",
+            arrayOf<Any>(clamped, clamped, goalId)
+        )
+    }
+
+    fun addGoalProgress(goalId: Long, delta: Int) {
+        val database = writableDatabase
+        database.rawQuery("SELECT current, target FROM goals WHERE id = ?", arrayOf(goalId.toString()))
+            .use { cursor ->
+                if (cursor.moveToFirst()) setGoalProgress(goalId, cursor.getInt(0) + delta)
+            }
+    }
+
+    fun setGoalStatus(goalId: Long, status: String) {
+        writableDatabase.execSQL(
+            "UPDATE goals SET status = ? WHERE id = ?",
+            arrayOf<Any>(status, goalId)
+        )
+    }
+
+    fun deleteGoal(goalId: Long) {
+        writableDatabase.delete("goals", "id = ?", arrayOf(goalId.toString()))
+    }
 
     fun skills(): List<Skill> = readableDatabase.rawQuery(
         "SELECT id, name, category, level, target_level, minutes, last_practiced_at, created_at " +
@@ -331,6 +403,25 @@ class StudyDb private constructor(context: Context) :
      * `reminders` keeps the alarm schedule per task so it can be rebuilt after a reboot;
      * `notification_log` records delivery and the user's action for the adaptive policy.
      */
+    /** v12 — long-term goals with a numeric measure and a deadline. */
+    private fun migrateToV12(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS goals(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT NOT NULL,
+              target INTEGER NOT NULL,
+              current INTEGER NOT NULL DEFAULT 0,
+              unit TEXT NOT NULL DEFAULT 'خطوة',
+              category TEXT NOT NULL DEFAULT '',
+              due_at INTEGER,
+              status TEXT NOT NULL DEFAULT 'active',
+              created_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
     /** v11 — skills the person is developing, independent of tasks and sessions. */
     private fun migrateToV11(db: SQLiteDatabase) {
         db.execSQL(
@@ -1162,7 +1253,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 11
+        private const val DB_VERSION = 12
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

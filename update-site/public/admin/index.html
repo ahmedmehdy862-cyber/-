@@ -14,7 +14,7 @@
 </head>
 <body>
   <div class="wrap">
-    <header><div class="brand"><span class="logo"><img src="/brand.svg" alt=""></span><span>مُنظِّم</span></div><a class="back" href="/">العودة لموقع التحديثات ←</a></header>
+    <header><div class="brand"><span class="logo"><img src="/brand.svg" alt=""></span><span>مُنظِّم</span></div><div style="display:flex;gap:14px;align-items:center"><a class="back" href="/admin/messages">رسائل الفريق والدعم ←</a><a class="back" href="/">العودة لموقع التحديثات ←</a></div></header>
     <main>
       <div class="intro"><span class="eyebrow">لوحة إدارة الإصدارات</span><h1>اربط تحديثاتك بالمتجر</h1><p>انشر التطبيق أولًا من حساب المطوّر في المتجر، ثم أضف رقم الإصدار ورابط صفحة التطبيق ليصل إشعار التحديث للطلاب.</p></div>
       <section id="login-panel" class="panel">
@@ -25,6 +25,17 @@
           <button class="button" type="submit">دخول آمن</button>
         </form>
         <div id="login-status" class="status" role="status" aria-live="polite"></div>
+      </section>
+
+      <section id="password-panel" class="panel hidden">
+        <div class="panel-head"><div><h2>غيّر كلمة المرور المؤقتة</h2><p class="hint">هذه أول مرة تدخل فيها بكلمة المرور المؤقتة. اختر كلمة مرور خاصة بك (١٠ أحرف على الأقل) قبل استخدام اللوحة.</p></div></div>
+        <form id="password-form" autocomplete="off">
+          <div class="field"><label for="current-password">كلمة المرور المؤقتة</label><input id="current-password" type="password" autocomplete="current-password" required></div>
+          <div class="field"><label for="new-password">كلمة المرور الجديدة</label><input id="new-password" type="password" autocomplete="new-password" minlength="10" required><span class="file-note">تُخزَّن مشفّرة (scrypt) ولا تُحفظ كنص.</span></div>
+          <div class="field"><label for="confirm-password">تأكيد كلمة المرور</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="10" required></div>
+          <button class="button" type="submit">حفظ كلمة المرور والمتابعة</button>
+        </form>
+        <div id="password-status" class="status" role="status" aria-live="polite"></div>
       </section>
 
       <section id="admin-panel" class="panel hidden">

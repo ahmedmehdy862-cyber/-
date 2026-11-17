@@ -473,6 +473,9 @@ private fun AppRoot(
             runCatching { ReminderRescheduleJob.schedule(context) }
         }
     }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { runCatching { TeamMessages.checkForNew(context) } }
+    }
 
     LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
 
@@ -609,6 +612,7 @@ private fun AppRoot(
                 "task_types" -> TaskTypesScreen(onBack = { returnToPreviousTab() })
                 "skills" -> SkillsScreen(onBack = { returnToPreviousTab() })
                 "messages" -> TeamMessagesScreen(onBack = { returnToPreviousTab() })
+                "goals" -> GoalsScreen(onBack = { returnToPreviousTab() })
                 "calendar" -> StudyCalendarScreen(
                     onBack = { returnToPreviousTab() },
                     onStartTask = { taskId -> setupTaskId = taskId }
@@ -622,7 +626,8 @@ private fun AppRoot(
                     onPrayerTimes = { openSecondary("prayer_times") },
                     onTaskTypes = { openSecondary("task_types") },
                     onSkills = { openSecondary("skills") },
-                    onMessages = { openSecondary("messages") }
+                    onMessages = { openSecondary("messages") },
+                    onGoals = { openSecondary("goals") }
                 )
                 "prayer_times" -> PrayerTimesScreen(onBack = { returnToPreviousTab() })
                 "updates" -> AppUpdatesScreen(onBack = { returnToPreviousTab() })
@@ -1246,7 +1251,8 @@ private fun MoreSectionsScreen(
     onPrayerTimes: () -> Unit,
     onTaskTypes: () -> Unit,
     onSkills: () -> Unit,
-    onMessages: () -> Unit
+    onMessages: () -> Unit,
+    onGoals: () -> Unit
 ) {
     Column(
         Modifier
@@ -1262,6 +1268,7 @@ private fun MoreSectionsScreen(
         MoreSectionCard("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes)
         MoreSectionCard("مهاراتي", "سجّل المهارات التي تطوّرها، ودقائق التدريب ومستواك فيها.", "✦", onSkills)
         MoreSectionCard("رسائل الفريق", "إعلانات ومستجدّات تصل بدون تحديث التطبيق.", "✉", onMessages)
+        MoreSectionCard("أهدافي", "أهداف كبيرة بمقياس ومهلة، وتقدّم يُسجّل خطوة بخطوة.", "◎", onGoals)
         MoreSectionCard("إحصاءاتي", "راجع وقت التركيز والمهام التي أنجزتها.", "◔", onAnalytics)
         MoreSectionCard("تخصيص التجربة", "اضبط اسمك وهدفك اليومي والتذكير والمظهر.", "⚙", onSettings)
         MoreSectionCard("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرًا محليًا.", "☾", onPrayerTimes)

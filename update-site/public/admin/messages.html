@@ -37,6 +37,19 @@
       <p class="meta">تظهر داخل التطبيق عند أول فتح بعد النشر — بدون تحديث من المتجر.</p>
       <input id="title" maxlength="90" placeholder="عنوان الرسالة">
       <textarea id="body" rows="3" maxlength="900" placeholder="نص الرسالة"></textarea>
+      <div class="row">
+        <label class="meta" for="audience">لمن؟</label>
+        <select id="audience" style="width:auto;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0e1729;color:var(--ink);font:inherit">
+          <option value="">كل المستخدمين</option>
+          <option value="student">الطلاب</option>
+          <option value="graduate">الخريجون</option>
+          <option value="professional">الموظفون</option>
+          <option value="retired">المتقاعدون</option>
+          <option value="general">الملف العام</option>
+        </select>
+        <label class="meta" for="min-version">من إصدار</label>
+        <input id="min-version" type="number" min="0" max="1000000" value="0" style="width:130px">
+      </div>
       <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
     </div>
 
@@ -61,7 +74,7 @@
     box.innerHTML = messages.map((item) => `
       <div class="item">
         <div><strong>${esc(item.title)}</strong><div class="meta">${esc(item.body)}</div>
-        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}</div></div>
+        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}</div></div>
         <button class="ghost" data-delete="${esc(item.id)}">حذف</button>
       </div>`).join("");
     box.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
@@ -82,13 +95,13 @@
         <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
       </div>`).join("");
     box.querySelectorAll("[data-mark]").forEach((btn) => btn.addEventListener("click", async () => {
-      const res = await api("/api/admin/inbox", { method: "POST", body: JSON.stringify({ id: btn.dataset.mark, status: btn.dataset.status }) });
+      const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ markId: btn.dataset.mark, status: btn.dataset.status }) });
       if (res.ok) load();
     }));
   }
 
   async function load() {
-    const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/inbox")]);
+    const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/messages?view=inbox")]);
     if (messages.status === 401 || inbox.status === 401) {
       document.getElementById("login-card").hidden = false;
       document.getElementById("panel").hidden = true;
@@ -106,7 +119,9 @@
     const body = document.getElementById("body").value.trim();
     const status = document.getElementById("send-status");
     if (title.length < 3 || body.length < 3) { status.textContent = "اكتب عنوانًا ونصًا واضحًا."; return; }
-    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body }) });
+    const audienceProfile = document.getElementById("audience").value;
+    const minVersionCode = Number(document.getElementById("min-version").value || 0);
+    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode }) });
     status.textContent = res.ok ? "نُشرت الرسالة." : "تعذر النشر.";
     if (res.ok) { document.getElementById("title").value = ""; document.getElementById("body").value = ""; load(); }
   });

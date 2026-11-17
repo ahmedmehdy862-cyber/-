@@ -1,6 +1,13 @@
 package com.focusstudy.poc
 
+import android.Manifest
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,7 +63,9 @@ object TeamMessages {
     private const val DISMISSED = "dismissed"
 
     suspend fun fetch(context: Context): List<TeamMessage> = withContext(Dispatchers.IO) {
-        val remote = runCatching { request("$BASE/api/messages", "GET", null) }.getOrNull()
+        val profile = FocusPreferences.load(context).profile.key
+        val query = "?profile=$profile&version=${versionCode(context)}"
+        val remote = runCatching { request("$BASE/api/messages$query", "GET", null) }.getOrNull()
         val messages = remote?.let { parseMessages(it) }.orEmpty()
         if (messages.isNotEmpty()) {
             prefs(context).edit().putString(CACHE, remote).apply()
@@ -77,6 +86,23 @@ object TeamMessages {
 
     fun isDismissed(context: Context, id: String): Boolean =
         prefs(context).getStringSet(DISMISSED, emptySet()).orEmpty().contains(id)
+
+    /**
+     * Fetches the channel and raises one notification for the newest unseen message.
+     * Messages are pulled, not pushed: this runs on every launch, no background service needed.
+     */
+    suspend fun checkForNew(context: Context) {
+        val messages = fetch(context)
+        if (messages.isEmpty()) return
+        val seen = prefs(context).getStringSet(SEEN, emptySet()).orEmpty().toMutableSet()
+        val unseen = messages.filter { it.id.isNotBlank() && it.id !in seen }
+        if (unseen.isEmpty()) return
+        seen.addAll(unseen.map { it.id })
+        prefs(context).edit().putStringSet(SEEN, seen).apply()
+        TeamNotifier.notify(context, unseen.first())
+    }
+
+    private const val SEEN = "seen"
 
     private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -120,6 +146,11 @@ object TeamMessages {
             connection.disconnect()
         }
     }
+
+    internal fun versionCode(context: Context): Int = runCatching {
+        val info = context.packageManager.getPackageInfo(context.packageName, 0)
+        if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode.toInt() else @Suppress("DEPRECATION") info.versionCode
+    }.getOrDefault(0)
 
     private fun versionName(context: Context): String = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
@@ -225,5 +256,43 @@ internal fun TeamMessagesScreen(onBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+/** Local notification so an announcement is not missed when the app is closed. */
+internal object TeamNotifier {
+    private const val CHANNEL = "team_messages"
+
+    fun notify(context: Context, message: TeamMessage) {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        if (android.os.Build.VERSION.SDK_INT >= 26) {
+            manager.createNotificationChannel(
+                NotificationChannel(CHANNEL, "رسائل الفريق", NotificationManager.IMPORTANCE_DEFAULT)
+            )
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) return
+        val intent = PendingIntent.getActivity(
+            context,
+            0,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+        val builder = if (android.os.Build.VERSION.SDK_INT >= 26) {
+            Notification.Builder(context, CHANNEL)
+        } else {
+            @Suppress("DEPRECATION")
+            Notification.Builder(context)
+        }
+        val notification = builder
+            .setSmallIcon(R.drawable.ic_stat_focus)
+            .setContentTitle(message.title)
+            .setContentText(message.body)
+            .setStyle(Notification.BigTextStyle().bigText(message.body))
+            .setContentIntent(intent)
+            .setAutoCancel(true)
+            .build()
+        runCatching { manager.notify(message.id.hashCode(), notification) }
     }
 }

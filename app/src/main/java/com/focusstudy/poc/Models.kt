@@ -141,4 +141,20 @@ data class Skill(
         get() = if (targetLevel <= 0) 0f else (level.toFloat() / targetLevel).coerceIn(0f, 1f)
 }
 
+/** A long-term goal measured by a number the person picks (دروس، ساعات، كتب…). */
+data class Goal(
+    val id: Long,
+    val title: String,
+    val target: Int,
+    val current: Int = 0,
+    val unit: String = "خطوة",
+    val category: String = "",
+    val dueAt: Long? = null,
+    val status: String = "active",
+    val createdAt: Long = 0L
+) {
+    val progress: Float
+        get() = if (target <= 0) 0f else (current.toFloat() / target).coerceIn(0f, 1f)
+}
+
 data class FocusSessionMetric(val startedAt: Long, val endsAt: Long, val taskId: Long)

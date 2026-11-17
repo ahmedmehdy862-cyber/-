@@ -3,6 +3,8 @@ import { upload } from "@vercel/blob/client";
 const loginPanel = document.getElementById("login-panel");
 const adminPanel = document.getElementById("admin-panel");
 const loginStatus = document.getElementById("login-status");
+const passwordPanel = document.getElementById("password-panel");
+const passwordStatus = document.getElementById("password-status");
 const publishStatus = document.getElementById("publish-status");
 const storeStatus = document.getElementById("store-status");
 const publishButton = document.getElementById("publish");
@@ -31,7 +33,11 @@ function errorText(error) {
     invalid_apk_url: "أدخل رابط HTTPS مباشرًا ينتهي بـ .apk.",
     apk_upload_failed: "تعذر رفع ملف APK. تحقق من صلاحية الملف والاتصال.",
     store_link_save_failed: "تعذر حفظ رابط المتجر. تحقق من الرابط وحاول مجددًا.",
-    authentication_required: "انتهت الجلسة. سجّل الدخول من جديد."
+    authentication_required: "انتهت الجلسة. سجّل الدخول من جديد.",
+    password_too_short: "اختر كلمة مرور من ١٠ أحرف على الأقل.",
+    password_unchanged: "كلمة المرور الجديدة يجب أن تختلف عن المؤقتة.",
+    password_mismatch: "تأكيد كلمة المرور لا يطابق الجديدة.",
+    password_save_failed: "تعذر حفظ كلمة المرور. حاول مرة أخرى."
   };
   return known[error.message] || "تعذر إكمال العملية. تحقق من البيانات والاتصال ثم حاول مجددًا.";
 }
@@ -52,9 +58,11 @@ async function loadCurrentRelease() {
 
 async function openAdmin() {
   const session = await callApi("/api/admin/session");
+  const mustChange = Boolean(session.mustChangePassword);
   loginPanel.classList.toggle("hidden", session.authenticated);
-  adminPanel.classList.toggle("hidden", !session.authenticated);
-  if (session.authenticated) await loadCurrentRelease();
+  passwordPanel.classList.toggle("hidden", !session.authenticated || !mustChange);
+  adminPanel.classList.toggle("hidden", !session.authenticated || mustChange);
+  if (session.authenticated && !mustChange) await loadCurrentRelease();
 }
 
 document.getElementById("login-form").addEventListener("submit", async (event) => {
@@ -68,6 +76,33 @@ document.getElementById("login-form").addEventListener("submit", async (event) =
     await openAdmin();
   } catch (error) {
     showStatus(loginStatus, errorText(error), "error");
+  } finally {
+    button.disabled = false;
+  }
+});
+
+document.getElementById("password-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const currentPassword = document.getElementById("current-password").value;
+  const newPassword = document.getElementById("new-password").value;
+  const confirmPassword = document.getElementById("confirm-password").value;
+  if (newPassword !== confirmPassword) return showStatus(passwordStatus, errorText({ message: "password_mismatch" }), "error");
+  const button = event.currentTarget.querySelector("button[type=submit]");
+  button.disabled = true;
+  showStatus(passwordStatus, "جارٍ حفظ كلمة المرور…");
+  try {
+    await callApi("/api/admin/password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    showStatus(passwordStatus, "تم تغيير كلمة المرور. صارت المؤقتة غير صالحة.", "ok");
+    document.getElementById("current-password").value = "";
+    document.getElementById("new-password").value = "";
+    document.getElementById("confirm-password").value = "";
+    await openAdmin();
+  } catch (error) {
+    showStatus(passwordStatus, errorText(error), "error");
   } finally {
     button.disabled = false;
   }
