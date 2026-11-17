@@ -10,6 +10,8 @@
   <title>تحديثات مُنظِّم</title>
   <style>
     :root{color-scheme:dark;--bg:#090e1a;--panel:#111a2c;--panel2:#16223a;--line:#293854;--ink:#F7F8FA;--muted:#9FB2C6;--blue:#65a0ff;--violet:#0E7C74;--mint:#5FE0CE;--amber:#ffd083;--radius:28px}
+    html[data-theme="light"]{color-scheme:light;--bg:#f2f6fb;--panel:#ffffff;--panel2:#eaf1f8;--line:#d7e2ee;--ink:#101f30;--muted:#4c6479}
+    html[data-theme="light"] body{background:radial-gradient(ellipse at 10% 0%,#dff3f0 0,transparent 40%),radial-gradient(ellipse at 95% 90%,#e8eefc 0,transparent 36%),var(--bg)}
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#172d54 0,transparent 38%),radial-gradient(ellipse at 95% 90%,#321d61 0,transparent 34%),var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
     a{color:inherit}
@@ -60,14 +62,14 @@
   <div class="wrap">
     <header>
       <div class="brand"><span class="logo"><img src="/brand.svg" alt=""></span><span>مُنظِّم</span></div>
-      <div class="online">صفحة التحديثات الرسمية <a class="admin-link" href="/admin/">الإدارة</a></div>
+      <div class="online">صفحة التحديثات الرسمية <button id="theme-toggle" type="button" aria-label="تبديل المظهر" style="background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:999px;padding:6px 12px;cursor:pointer;font:inherit">🌗 المظهر</button> <a class="admin-link" href="/admin/">الإدارة</a></div>
     </header>
     <main>
       <section class="hero" aria-labelledby="title">
         <div>
-          <span class="eyebrow">مساحة أفضل لمذاكرتك</span>
-          <h1 id="title">كل تحديث يقرّبك من يوم دراسي أهدأ.</h1>
-          <p class="lead">نزّل آخر إصدار من مُنظِّم، وتعرّف على التحسينات الجديدة قبل ما ترجع لخطة مذاكرتك.</p>
+          <span class="eyebrow">مساحة أفضل ليومك</span>
+          <h1 id="title">مُنظِّم لكل شخص: طالب، خريج، موظف، أو متقاعد.</h1>
+          <p class="lead">مهام ومواعيد ومهارات وجلسات تركيز في مساحة واحدة، مع تحديثات تلقائية ورسائل من الفريق تصل بدون تحديث التطبيق.</p>
           <div class="actions">
             <a id="hero-store" class="button primary" href="#download" aria-disabled="true">رابط المتجر غير مربوط</a>
             <a class="button secondary" href="#how-to">طريقة التثبيت</a>
@@ -77,6 +79,23 @@
         <div class="art" aria-hidden="true">
           <div class="orbit"><img class="shield" src="/brand-mark.svg" alt="شعار مُنظِّم"><span class="spark one">📚</span><span class="spark two">⚡</span></div>
         </div>
+      </section>
+
+      <h2 class="section-title">ماذا يفعل مُنظِّم؟</h2>
+      <section class="steps" aria-label="مزايا مُنظِّم">
+        <div class="step"><strong>خطة اليوم</strong><br>المتأخر ثم مهام اليوم بالساعة ثم ما بلا موعد — تفتح التطبيق وتعرف ماذا تفعل الآن.</div>
+        <div class="step"><strong>هيكل مرن</strong><br>أقسام تخصّك: «موادي»، «عمل»، «صحة»… تنشئها وتعيد تسميتها وأرشفتها.</div>
+        <div class="step"><strong>مهارات وأهداف</strong><br>سجّل كل مهارة تطوّرها، ومستواها ودقائق تدريبك، مع هدف يومي يناسبك.</div>
+        <div class="step"><strong>مظهر ذكي</strong><br>وضع فاتح وداكن وألوان مضبوطة للتباين، مع حركة هادئة تحترم إعداد تقليل الحركة.</div>
+        <div class="step"><strong>تذكيرات متكيّفة</strong><br>تذكير المهام ومنبهات الصلاة وهدوء ليلي، وكلها تُعاد تلقائيًا بعد إعادة تشغيل الهاتف.</div>
+        <div class="step"><strong>رسائل مباشرة</strong><br>الفريق يرسل إعلانًا فيظهر داخل التطبيق فورًا — ودعمك يصل إلى لوحة الفريق بنفس الطريقة.</div>
+      </section>
+
+      <h2 class="section-title">نسخة الكمبيوتر (Windows)</h2>
+      <section class="steps" aria-label="تثبيت على ويندوز">
+        <div class="step">افتح هذه الصفحة في Chrome أو Edge على ويندوز.</div>
+        <div class="step">من أيقونة التثبيت في شريط العنوان اختر «تثبيت» — تُصبح لك نافذة مستقلة تعمل دون متصفح.</div>
+        <div class="step">تطبيق أندرويد الكامل يُثبَّت على الهاتف من الرابط أعلاه؛ نسخة سطح المكتب المستقلة (WinUI) قيد التطوير.</div>
       </section>
 
       <h2 class="section-title">آخر إصدار</h2>
@@ -136,6 +155,20 @@
         storeButton.textContent = 'صفحة المتجر غير متاحة';
         status.textContent = 'تعذر الاتصال بمصدر التحديثات.';
       });
+  </script>
+  <script>
+    (function () {
+      var root = document.documentElement;
+      var saved = localStorage.getItem("monazem-theme");
+      if (saved === "light") root.setAttribute("data-theme", "light");
+      var toggle = document.getElementById("theme-toggle");
+      if (toggle) toggle.addEventListener("click", function () {
+        var light = root.getAttribute("data-theme") === "light";
+        if (light) root.removeAttribute("data-theme"); else root.setAttribute("data-theme", "light");
+        localStorage.setItem("monazem-theme", light ? "dark" : "light");
+      });
+      if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(function () {});
+    })();
   </script>
 </body>
 </html>

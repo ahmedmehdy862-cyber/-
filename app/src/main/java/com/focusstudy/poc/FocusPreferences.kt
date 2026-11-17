@@ -2,6 +2,30 @@ package com.focusstudy.poc
 
 import android.content.Context
 
+/** How the app picks its palette: follow the phone, or force one mode. */
+enum class ThemeMode(val key: String, val label: String) {
+    SYSTEM("system", "حسب النظام"),
+    LIGHT("light", "فاتح"),
+    DARK("dark", "داكن");
+
+    companion object {
+        fun from(key: String?): ThemeMode = entries.firstOrNull { it.key == key } ?: SYSTEM
+    }
+}
+
+/** Who is organizing with the app; it seeds sections and wording without limiting anything. */
+enum class UserProfile(val key: String, val label: String, val hint: String) {
+    STUDENT("student", "طالب", "مواد وامتحانات وجلسات مذاكرة"),
+    GRADUATE("graduate", "خريج", "مشروع تخرج ومهارات وخطة عمل"),
+    PROFESSIONAL("professional", "موظف", "اجتماعات ومهام عمل وأهداف"),
+    RETIRED("retired", "متقاعد", "صحة وعائلة ومتابعة يومية"),
+    GENERAL("general", "عام", "تنظيم يومي يناسب أي شخص");
+
+    companion object {
+        fun from(key: String?): UserProfile = entries.firstOrNull { it.key == key } ?: GENERAL
+    }
+}
+
 data class FocusPreferences(
     val studentName: String = "",
     val dailyGoalMinutes: Int = 120,
@@ -29,7 +53,9 @@ data class FocusPreferences(
     val legacyReminders: Boolean = false,
     val quietStartHour: Int = 23,
     val quietEndHour: Int = 7,
-    val reduceMotion: Boolean = false
+    val reduceMotion: Boolean = false,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
+    val profile: UserProfile = UserProfile.GENERAL
 ) {
     companion object {
         internal const val FILE = "focus_study_preferences"
@@ -66,7 +92,9 @@ data class FocusPreferences(
                 legacyReminders = prefs.getBoolean("legacy_reminders", false),
                 quietStartHour = prefs.getInt("quiet_start_hour", 23).coerceIn(0, 23),
                 quietEndHour = prefs.getInt("quiet_end_hour", 7).coerceIn(0, 23),
-                reduceMotion = prefs.getBoolean("reduce_motion", false)
+                reduceMotion = prefs.getBoolean("reduce_motion", false),
+                themeMode = ThemeMode.from(prefs.getString("theme_mode", "system")),
+                profile = UserProfile.from(prefs.getString("profile", "general"))
             )
         }
 
@@ -99,6 +127,8 @@ data class FocusPreferences(
                 .putInt("quiet_start_hour", value.quietStartHour.coerceIn(0, 23))
                 .putInt("quiet_end_hour", value.quietEndHour.coerceIn(0, 23))
                 .putBoolean("reduce_motion", value.reduceMotion)
+                .putString("theme_mode", value.themeMode.key)
+                .putString("profile", value.profile.key)
                 .apply()
         }
     }

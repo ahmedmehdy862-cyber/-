@@ -201,6 +201,8 @@ internal fun PersonalizationScreen(
     var eveningHour by rememberSaveable(current.eveningMessageHour) { mutableStateOf(current.eveningMessageHour) }
     var tone by rememberSaveable(current.tonePreference) { mutableStateOf(current.tonePreference) }
     var reduceMotion by rememberSaveable(current.reduceMotion) { mutableStateOf(current.reduceMotion) }
+    var themeMode by rememberSaveable(current.themeMode) { mutableStateOf(current.themeMode) }
+    var profile by rememberSaveable(current.profile) { mutableStateOf(current.profile) }
     var density by rememberSaveable(current.notificationDensity) { mutableStateOf(current.notificationDensity) }
     var smartReminders by rememberSaveable(current.smartRemindersEnabled) { mutableStateOf(current.smartRemindersEnabled) }
     var quietHours by rememberSaveable(current.quietHoursEnabled) { mutableStateOf(current.quietHoursEnabled) }
@@ -225,7 +227,7 @@ internal fun PersonalizationScreen(
             verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             item {
-                PreferenceCard(title = "ملفك الدراسي", description = "اسمك وصورتك يخصصان رفيقك ورسائل التشجيع.") {
+                PreferenceCard(title = "ملفك الشخصي", description = "اسمك وصورتك يخصصان رفيقك ورسائل التشجيع.") {
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it.take(32) },
@@ -235,7 +237,7 @@ internal fun PersonalizationScreen(
                         shape = RoundedCornerShape(16.dp)
                     )
                     Spacer(Modifier.height(10.dp))
-                    Text("هدف المذاكرة اليومي: ${goal.toInt()} دقيقة", color = FocusColors.TextSecondary)
+                    Text("هدفك اليومي: ${goal.toInt()} دقيقة", color = FocusColors.TextSecondary)
                     Slider(value = goal, onValueChange = { goal = it }, valueRange = 30f..360f, steps = 10)
                     Spacer(Modifier.height(8.dp))
                     AvatarChooser(avatarPath, name, companionStyle, onAvatarChanged = { avatarPath = it })
@@ -306,6 +308,50 @@ internal fun PersonalizationScreen(
                     description = "تثبيت خلفية التطبيق بدل حركتها المستمرة. تهدأ تلقائيًا خلال جلسة التركيز لتوفير البطارية."
                 ) {
                     PreferenceSwitchRow("حركة أقل", "الخلفية تصبح ثابتة.", reduceMotion) { reduceMotion = it }
+                }
+            }
+            item {
+                PreferenceCard(
+                    title = "ملفك الشخصي",
+                    description = "يضيف أقسامًا مناسبة لك (مواد، عمل، صحة…) ويمكنك تعديلها أو حذفها من «أنواع المهام»."
+                ) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        UserProfile.entries.forEach { option ->
+                            FilterChip(
+                                selected = profile == option,
+                                onClick = { profile = option },
+                                label = { Text(option.label) }
+                            )
+                        }
+                    }
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "${profile.label}: ${profile.hint}",
+                        color = FocusColors.TextSecondary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+            item {
+                PreferenceCard(
+                    title = "المظهر",
+                    description = "فاتح أو داكن أو تلقائي حسب إعداد الهاتف. الألوان والتباين مضبوطة في الوضعين."
+                ) {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ThemeMode.entries.forEach { option ->
+                            FilterChip(
+                                selected = themeMode == option,
+                                onClick = { themeMode = option },
+                                label = { Text(option.label) }
+                            )
+                        }
+                    }
                 }
             }
             item {
@@ -415,7 +461,9 @@ internal fun PersonalizationScreen(
                     quietStartHour = quietStart,
                     quietEndHour = quietEnd,
                     leadMinutes = lead,
-                    legacyReminders = legacyReminders
+                    legacyReminders = legacyReminders,
+                    themeMode = themeMode,
+                    profile = profile
                 ))
                 onBack()
             },
@@ -428,6 +476,12 @@ internal fun PersonalizationScreen(
 @Composable
 internal fun SupportScreen(onBack: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var name by rememberSaveable { mutableStateOf("") }
+    var contact by rememberSaveable { mutableStateOf("") }
+    var body by rememberSaveable { mutableStateOf("") }
+    var sending by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onBack) { Text("رجوع") }
@@ -442,9 +496,57 @@ internal fun SupportScreen(onBack: () -> Unit) {
             Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Text("محتاج مساعدة؟", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Text(
-                    "راسل الدعم الفني عن مشكلة أو اقتراح لتحسين تجربة المذاكرة. هيفتح واتساب، وتقدر تراجع رسالتك قبل إرسالها.",
+                    "راسل فريق مُنظِّم عن مشكلة أو اقتراح. الرسالة تصل إلى لوحة الدعم فورًا، وتقدر أيضًا تراسلنا على واتساب.",
                     color = FocusColors.TextSecondary
                 )
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it.take(60) },
+                    label = { Text("اسمك (اختياري)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                )
+                OutlinedTextField(
+                    value = contact,
+                    onValueChange = { contact = it.take(120) },
+                    label = { Text("بريد أو رقم للرد (اختياري)") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                )
+                OutlinedTextField(
+                    value = body,
+                    onValueChange = { body = it.take(2000) },
+                    label = { Text("اكتب مشكلتك أو اقتراحك") },
+                    minLines = 3,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                )
+                Button(
+                    onClick = {
+                        if (body.trim().length >= 5 && !sending) {
+                            sending = true
+                            result = ""
+                            scope.launch {
+                                val ok = TeamMessages.sendSupport(context, name, contact, body)
+                                sending = false
+                                result = if (ok) "وصلت رسالتك إلى الفريق، وسنرد عليك في أقرب وقت." else "تعذر الإرسال الآن. تحقق من الاتصال أو استخدم واتساب."
+                                if (ok) body = ""
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp)
+                ) { Text(if (sending) "جارٍ الإرسال…" else "إرسال إلى فريق مُنظِّم") }
+                if (result.isNotBlank()) {
+                    Text(
+                        result,
+                        color = if (result.startsWith("وصلت")) FocusColors.onTint(FocusColors.Green) else FocusColors.onTint(FocusColors.Rose),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                Text("أو راسلنا على واتساب مباشرة:", color = FocusColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("اسم الدعم", color = FocusColors.TextSecondary)
                     Spacer(Modifier.width(8.dp))

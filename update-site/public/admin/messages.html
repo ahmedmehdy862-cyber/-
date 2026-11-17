@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>رسائل الفريق والدعم — مُنظِّم</title>
+  <style>
+    :root{--bg:#0b1322;--panel:#141f33;--line:#2a3a56;--ink:#f4f8fc;--muted:#9fb2c6;--mint:#16B8A6;--rose:#f43f5e}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
+    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto;padding:24px 0}
+    h1{font-size:22px;margin:0}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    a{color:var(--mint)}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px}
+    input,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0e1729;color:var(--ink);font:inherit;margin:6px 0}
+    button{padding:10px 16px;border-radius:12px;border:0;background:var(--mint);color:#04211e;font:inherit;font-weight:700;cursor:pointer}
+    button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:500}
+    .item{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
+    .meta{color:var(--muted);font-size:13px}.new{color:#04211e;background:var(--mint);border-radius:999px;padding:1px 8px;font-size:12px}
+    .handled{color:var(--muted)}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>رسائل الفريق والدعم</h1>
+    <div class="row"><a href="/admin/">لوحة الإصدارات</a><a href="/">الموقع</a></div>
+  </header>
+
+  <div class="card" id="login-card" hidden>
+    <strong>تحتاج تسجيل الدخول</strong>
+    <p class="meta">سجّل الدخول من لوحة الإدارة ثم ارجع إلى هذه الصفحة.</p>
+    <a href="/admin/">فتح تسجيل الدخول</a>
+  </div>
+
+  <div id="panel" hidden>
+    <div class="card">
+      <strong>بث رسالة فورية لكل المستخدمين</strong>
+      <p class="meta">تظهر داخل التطبيق عند أول فتح بعد النشر — بدون تحديث من المتجر.</p>
+      <input id="title" maxlength="90" placeholder="عنوان الرسالة">
+      <textarea id="body" rows="3" maxlength="900" placeholder="نص الرسالة"></textarea>
+      <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><strong>الرسائل المنشورة</strong><button class="ghost" id="refresh">تحديث</button></div>
+      <div id="messages"></div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between"><strong>صندوق الدعم</strong><span id="open-count" class="meta"></span></div>
+      <div id="inbox"></div>
+    </div>
+  </div>
+</div>
+<script>
+  const api = (path, options = {}) => fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
+  const esc = (value) => String(value || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+
+  function renderMessages(messages) {
+    const box = document.getElementById("messages");
+    if (!messages.length) { box.innerHTML = '<p class="meta">لا رسائل منشورة.</p>'; return; }
+    box.innerHTML = messages.map((item) => `
+      <div class="item">
+        <div><strong>${esc(item.title)}</strong><div class="meta">${esc(item.body)}</div>
+        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}</div></div>
+        <button class="ghost" data-delete="${esc(item.id)}">حذف</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
+      const res = await api("/api/admin/messages", { method: "DELETE", body: JSON.stringify({ id: btn.dataset.delete }) });
+      if (res.ok) load();
+    }));
+  }
+
+  function renderInbox(items) {
+    const box = document.getElementById("inbox");
+    document.getElementById("open-count").textContent = `${items.filter((i) => i.status === "new").length} جديدة من ${items.length}`;
+    if (!items.length) { box.innerHTML = '<p class="meta">لا رسائل دعم بعد.</p>'; return; }
+    box.innerHTML = items.map((item) => `
+      <div class="item">
+        <div><strong>${esc(item.name || "بدون اسم")}</strong> <span class="${item.status === "new" ? "new" : "handled"}">${item.status === "new" ? "جديدة" : "تمّت"}</span>
+          <div>${esc(item.body)}</div>
+          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}</div></div>
+        <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
+      </div>`).join("");
+    box.querySelectorAll("[data-mark]").forEach((btn) => btn.addEventListener("click", async () => {
+      const res = await api("/api/admin/inbox", { method: "POST", body: JSON.stringify({ id: btn.dataset.mark, status: btn.dataset.status }) });
+      if (res.ok) load();
+    }));
+  }
+
+  async function load() {
+    const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/inbox")]);
+    if (messages.status === 401 || inbox.status === 401) {
+      document.getElementById("login-card").hidden = false;
+      document.getElementById("panel").hidden = true;
+      return;
+    }
+    document.getElementById("login-card").hidden = true;
+    document.getElementById("panel").hidden = false;
+    renderMessages((await messages.json()).messages || []);
+    const box = await inbox.json();
+    renderInbox(box.items || []);
+  }
+
+  document.getElementById("send").addEventListener("click", async () => {
+    const title = document.getElementById("title").value.trim();
+    const body = document.getElementById("body").value.trim();
+    const status = document.getElementById("send-status");
+    if (title.length < 3 || body.length < 3) { status.textContent = "اكتب عنوانًا ونصًا واضحًا."; return; }
+    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body }) });
+    status.textContent = res.ok ? "نُشرت الرسالة." : "تعذر النشر.";
+    if (res.ok) { document.getElementById("title").value = ""; document.getElementById("body").value = ""; load(); }
+  });
+
+  document.getElementById("refresh").addEventListener("click", load);
+  load();
+</script>
+</body>
+</html>

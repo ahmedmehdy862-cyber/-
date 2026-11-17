@@ -1,0 +1,229 @@
+package com.focusstudy.poc
+
+import android.content.Context
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import java.net.HttpURLConnection
+import java.net.URL
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+
+/** A one-way broadcast from the team, fetched at runtime so no store update is needed. */
+data class TeamMessage(val id: String, val title: String, val body: String, val at: String)
+
+/**
+ * Team → user channel and user → team support form.
+ *
+ * Messages live on the update site, so the team can announce something today and every installed
+ * app shows it on the next launch. The last successful fetch is cached so the inbox still reads
+ * offline, and dismissals are remembered per message id.
+ */
+object TeamMessages {
+
+    private const val BASE = "https://update-site-sigma.vercel.app"
+    private const val PREFS = "focus_team_messages"
+    private const val CACHE = "cache"
+    private const val DISMISSED = "dismissed"
+
+    suspend fun fetch(context: Context): List<TeamMessage> = withContext(Dispatchers.IO) {
+        val remote = runCatching { request("$BASE/api/messages", "GET", null) }.getOrNull()
+        val messages = remote?.let { parseMessages(it) }.orEmpty()
+        if (messages.isNotEmpty()) {
+            prefs(context).edit().putString(CACHE, remote).apply()
+            messages
+        } else {
+            parseMessages(prefs(context).getString(CACHE, "").orEmpty())
+        }
+    }
+
+    fun cached(context: Context): List<TeamMessage> =
+        parseMessages(prefs(context).getString(CACHE, "").orEmpty())
+
+    fun dismiss(context: Context, id: String) {
+        val current = prefs(context).getStringSet(DISMISSED, emptySet()).orEmpty().toMutableSet()
+        current.add(id)
+        prefs(context).edit().putStringSet(DISMISSED, current).apply()
+    }
+
+    fun isDismissed(context: Context, id: String): Boolean =
+        prefs(context).getStringSet(DISMISSED, emptySet()).orEmpty().contains(id)
+
+    private fun prefs(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+
+    private fun parseMessages(raw: String): List<TeamMessage> {
+        if (raw.isBlank()) return emptyList()
+        return runCatching {
+            val array = JSONObject(raw).optJSONArray("messages") ?: JSONArray()
+            buildList {
+                for (index in 0 until array.length()) {
+                    val item = array.getJSONObject(index)
+                    add(
+                        TeamMessage(
+                            id = item.optString("id"),
+                            title = item.optString("title"),
+                            body = item.optString("body"),
+                            at = item.optString("at")
+                        )
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    internal fun request(url: String, method: String, payload: String?): String {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        return try {
+            connection.requestMethod = method
+            connection.connectTimeout = 6000
+            connection.readTimeout = 6000
+            connection.setRequestProperty("Accept", "application/json")
+            if (payload != null) {
+                connection.doOutput = true
+                connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                connection.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
+            }
+            val stream = if (connection.responseCode in 200..299) connection.inputStream else connection.errorStream
+            stream?.bufferedReader()?.use { it.readText() }.orEmpty().also {
+                if (connection.responseCode !in 200..299) error("http ${connection.responseCode}")
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun versionName(context: Context): String = runCatching {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+    }.getOrDefault("")
+
+    /** Sends a support message to the team inbox; returns true when the server accepted it. */
+    suspend fun sendSupport(context: Context, name: String, contact: String, body: String): Boolean =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val payload = JSONObject()
+                    .put("name", name)
+                    .put("contact", contact)
+                    .put("body", body)
+                    .put("version", versionName(context))
+                    .toString()
+                request("$BASE/api/support", "POST", payload)
+                true
+            }.getOrDefault(false)
+        }
+}
+
+/** Newest unread announcement, right on the day screen; hidden once the person taps «تم». */
+@Composable
+internal fun TeamMessageBanner(onOpenAll: () -> Unit) {
+    val context = LocalContext.current
+    var message by remember { mutableStateOf<TeamMessage?>(null) }
+
+    LaunchedEffect(Unit) {
+        message = TeamMessages.cached(context).firstOrNull { !TeamMessages.isDismissed(context, it.id) }
+        val fresh = TeamMessages.fetch(context).firstOrNull { !TeamMessages.isDismissed(context, it.id) }
+        if (fresh != null) message = fresh
+    }
+
+    val current = message ?: return
+    Card(
+        colors = CardDefaults.cardColors(containerColor = FocusColors.Surface),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("رسالة من الفريق", style = MaterialTheme.typography.labelMedium, color = FocusColors.onTint(FocusColors.Blue))
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { TeamMessages.dismiss(context, current.id); message = null }) { Text("تم") }
+            }
+            Text(current.title, style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(4.dp))
+            Text(current.body, style = MaterialTheme.typography.bodySmall, color = FocusColors.TextSecondary)
+            Spacer(Modifier.height(6.dp))
+            TextButton(onClick = onOpenAll) { Text("كل الرسائل") }
+        }
+    }
+}
+
+@Composable
+internal fun TeamMessagesScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var messages by remember { mutableStateOf(TeamMessages.cached(context)) }
+    var loading by remember { mutableStateOf(true) }
+    var reload by remember { mutableStateOf(0) }
+
+    LaunchedEffect(reload) {
+        loading = true
+        messages = TeamMessages.fetch(context)
+        loading = false
+    }
+
+    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onBack) { Text("رجوع") }
+            Spacer(Modifier.width(8.dp))
+            Text("رسائل الفريق", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.weight(1f))
+            TextButton(onClick = { reload++ }) { Text(if (loading) "…" else "تحديث") }
+        }
+        Spacer(Modifier.height(10.dp))
+        LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (messages.isEmpty() && !loading) {
+                item {
+                    Text(
+                        "لا توجد رسائل الآن. ستظهر هنا رسائل الفريق وتحديثات الخدمة بدون تحديث التطبيق.",
+                        color = FocusColors.TextSecondary
+                    )
+                }
+            }
+            items(messages, key = { it.id }) { item ->
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = FocusColors.Surface),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Text(item.title, style = MaterialTheme.typography.titleSmall, color = FocusColors.TextPrimary, fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(4.dp))
+                        Text(item.body, style = MaterialTheme.typography.bodyMedium, color = FocusColors.TextSecondary)
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            item.at.take(16).replace("T", " · "),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = FocusColors.TextMuted
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

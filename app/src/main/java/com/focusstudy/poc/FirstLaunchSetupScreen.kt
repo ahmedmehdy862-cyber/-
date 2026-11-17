@@ -47,6 +47,7 @@ internal fun FirstLaunchSetupScreen(
     var goal by rememberSaveable { mutableStateOf(current.dailyGoalMinutes.toFloat()) }
     var avatar by rememberSaveable { mutableStateOf(current.avatarPath) }
     var style by rememberSaveable { mutableStateOf(current.companionStyle) }
+    var profile by rememberSaveable { mutableStateOf(current.profile) }
     var general by rememberSaveable { mutableStateOf(current.generalNotificationsEnabled) }
     var morning by rememberSaveable { mutableStateOf(current.morningMessageEnabled) }
     var evening by rememberSaveable { mutableStateOf(current.eveningMessageEnabled) }
@@ -74,6 +75,24 @@ internal fun FirstLaunchSetupScreen(
                     }
                 }
                 item {
+                    SetupCard("من أنت؟", "نضيف أقسامًا مناسبة لك: مواد، عمل، صحة… وتغيّرها في أي وقت.") {
+                        androidx.compose.foundation.layout.FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            UserProfile.entries.forEach { option ->
+                                FilterChip(
+                                    selected = profile == option,
+                                    onClick = { profile = option },
+                                    label = { Text(option.label) }
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(profile.hint, color = FocusColors.TextSecondary, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+                item {
                     SetupCard("رفيقك الجانبي", "اختار صورتك ونمطًا بصريًا ليظهر رفيقك ويتفاعل مع تقدمك.") {
                         AvatarChooser(avatar, name, style, onAvatarChanged = { avatar = it })
                         Spacer(Modifier.height(12.dp))
@@ -82,7 +101,7 @@ internal fun FirstLaunchSetupScreen(
                 }
                 item {
                     SetupCard("هدفك اليومي", "نبدأ بهدف واقعي ويمكنك تغييره في أي وقت.") {
-                        Text("${goal.toInt()} دقيقة مذاكرة", color = FocusColors.TextSecondary)
+                        Text("${goal.toInt()} دقيقة تركيز يوميًا", color = FocusColors.TextSecondary)
                         Slider(value = goal, onValueChange = { goal = it }, valueRange = 30f..360f, steps = 10)
                     }
                 }
@@ -127,6 +146,7 @@ internal fun FirstLaunchSetupScreen(
                             eveningMessageEnabled = evening,
                             morningMessageHour = morningHour,
                             eveningMessageHour = eveningHour,
+                            profile = profile,
                             onboardingCompleted = true
                         )
                         onComplete(updated)

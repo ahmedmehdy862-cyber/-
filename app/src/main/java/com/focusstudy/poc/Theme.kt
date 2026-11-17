@@ -6,8 +6,12 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -18,44 +22,59 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 
-/** Brand palette used across the app and the launcher icon. */
+/**
+ * Brand palette used across the app and the launcher icon.
+ *
+ * The tokens are palette-backed instead of fixed constants: switching between the dark and the
+ * light scheme only flips [lightMode], and every screen that reads a token recomposes by itself.
+ * That keeps one visual identity in two modes without touching hundreds of call sites.
+ */
 object FocusColors {
-    val Ink = Color(0xFF08131F)
-    val Navy = Color(0xFF142B45)
-    val Surface = Color(0xFF16283C)
-    val SurfaceHigh = Color(0xFF1E3550)
-    val Outline = Color(0xFF33506F)
+    internal var lightMode by mutableStateOf(false)
 
-    /** Body text: about 15:1 against [Ink], well past WCAG AAA. */
-    val TextPrimary = Color(0xFFF7F8FA)
+    private fun token(dark: Color, light: Color): Color = if (lightMode) light else dark
 
-    /** Secondary text: about 10:1 against [Ink]; readable at small sizes. */
-    val TextSecondary = Color(0xFFC6D5E4)
+    val Ink get() = token(Color(0xFF08131F), Color(0xFFF6F9FC))
+    val Navy get() = token(Color(0xFF142B45), Color(0xFFE7EFF7))
+    val Surface get() = token(Color(0xFF16283C), Color(0xFFFFFFFF))
+    val SurfaceHigh get() = token(Color(0xFF1E3550), Color(0xFFEDF3F9))
+    val Outline get() = token(Color(0xFF33506F), Color(0xFFD8E3EE))
 
-    /** Lowest emphasis, still about 7:1 against [Ink]. */
-    val TextMuted = Color(0xFF9FB2C6)
+    /** Body text: about 15:1 against [Ink] in both modes, well past WCAG AAA. */
+    val TextPrimary get() = token(Color(0xFFF7F8FA), Color(0xFF101F30))
 
-    val Blue = Color(0xFF16B8A6)
-    val BlueDeep = Color(0xFF0E7C74)
-    val Violet = Color(0xFF2F6F9E)
-    val Teal = Color(0xFF16B8A6)
-    val Amber = Color(0xFFF59E0B)
-    val Green = Color(0xFF22C55E)
-    val Rose = Color(0xFFF43F5E)
+    /** Secondary text, readable at small sizes in both modes. */
+    val TextSecondary get() = token(Color(0xFFC6D5E4), Color(0xFF445E78))
 
-    val accents = listOf(Blue, Violet, Teal, Amber, Green)
+    /** Lowest emphasis, still comfortable against the background. */
+    val TextMuted get() = token(Color(0xFF9FB2C6), Color(0xFF6F849A))
 
-    val background = Brush.verticalGradient(listOf(Ink, Navy, Color(0xFF0D2033)))
-    val hero = Brush.linearGradient(listOf(Color(0xFF142B45), Color(0xFF0E7C74)))
+    val Blue get() = Color(0xFF16B8A6)
+    val BlueDeep get() = Color(0xFF0E7C74)
+    val Violet get() = Color(0xFF2F6F9E)
+    val Teal get() = Color(0xFF16B8A6)
+    val Amber get() = Color(0xFFF59E0B)
+    val Green get() = Color(0xFF22C55E)
+    val Rose get() = Color(0xFFF43F5E)
+
+    val accents get() = listOf(Blue, Violet, Teal, Amber, Green)
+
+    val background get() = if (lightMode) {
+        Brush.verticalGradient(listOf(Color(0xFFFAFCFE), Color(0xFFEFF5FA), Color(0xFFF7FAFD)))
+    } else {
+        Brush.verticalGradient(listOf(Ink, Navy, Color(0xFF0D2033)))
+    }
+
+    val hero get() = Brush.linearGradient(listOf(Color(0xFF142B45), Color(0xFF0E7C74)))
 
     /**
-     * Accent colours are tuned for fills, not for small text. Blending them towards white keeps
-     * the identity while lifting contrast on dark and tinted surfaces.
+     * Accent colours are tuned for fills, not for small text: lifted towards white on the dark
+     * scheme and deepened towards black on the light one, so labels stay readable.
      */
-    fun onTint(accent: Color): Color = lerp(accent, Color.White, 0.45f)
+    fun onTint(accent: Color): Color = if (lightMode) lerp(accent, Color.Black, 0.42f) else lerp(accent, Color.White, 0.45f)
 }
 
-private fun focusScheme(accent: Color) = darkColorScheme(
+private fun darkScheme(accent: Color) = darkColorScheme(
     primary = accent,
     onPrimary = Color.White,
     primaryContainer = Color(0xFF0E7C74),
@@ -66,15 +85,38 @@ private fun focusScheme(accent: Color) = darkColorScheme(
     onSecondaryContainer = Color(0xFFDCEAF6),
     tertiary = FocusColors.Teal,
     onTertiary = Color(0xFF04211E),
-    background = FocusColors.Ink,
-    onBackground = FocusColors.TextPrimary,
-    surface = FocusColors.Surface,
-    onSurface = FocusColors.TextPrimary,
-    surfaceVariant = FocusColors.SurfaceHigh,
-    onSurfaceVariant = FocusColors.TextSecondary,
-    outline = FocusColors.Outline,
-    outlineVariant = FocusColors.Outline,
+    background = Color(0xFF08131F),
+    onBackground = Color(0xFFF7F8FA),
+    surface = Color(0xFF16283C),
+    onSurface = Color(0xFFF7F8FA),
+    surfaceVariant = Color(0xFF1E3550),
+    onSurfaceVariant = Color(0xFFC6D5E4),
+    outline = Color(0xFF33506F),
+    outlineVariant = Color(0xFF33506F),
     error = FocusColors.Rose,
+    onError = Color.White
+)
+
+private fun lightScheme(accent: Color) = lightColorScheme(
+    primary = lerp(accent, Color.Black, 0.35f),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6F5F1),
+    onPrimaryContainer = Color(0xFF06231F),
+    secondary = Color(0xFF2F6F9E),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDEEAF5),
+    onSecondaryContainer = Color(0xFF0E2233),
+    tertiary = Color(0xFF0E7C74),
+    onTertiary = Color.White,
+    background = Color(0xFFF6F9FC),
+    onBackground = Color(0xFF101F30),
+    surface = Color(0xFFFFFFFF),
+    onSurface = Color(0xFF101F30),
+    surfaceVariant = Color(0xFFEDF3F9),
+    onSurfaceVariant = Color(0xFF445E78),
+    outline = Color(0xFFD8E3EE),
+    outlineVariant = Color(0xFFD8E3EE),
+    error = Color(0xFFC81E43),
     onError = Color.White
 )
 
@@ -100,11 +142,18 @@ private val FocusShapes = Shapes(
 )
 
 @Composable
-fun FocusTheme(accent: Color = FocusColors.Blue, textScale: Float = 1f, content: @Composable () -> Unit) {
+fun FocusTheme(
+    accent: Color = FocusColors.Blue,
+    textScale: Float = 1f,
+    dark: Boolean = true,
+    content: @Composable () -> Unit
+) {
     val density = LocalDensity.current
+    // Applied before the content composes, so the very first frame already uses the right palette.
+    if (FocusColors.lightMode == dark) FocusColors.lightMode = !dark
     CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale)) {
         MaterialTheme(
-            colorScheme = focusScheme(accent),
+            colorScheme = if (dark) darkScheme(accent) else lightScheme(accent),
             typography = FocusTypography,
             shapes = FocusShapes,
         ) {

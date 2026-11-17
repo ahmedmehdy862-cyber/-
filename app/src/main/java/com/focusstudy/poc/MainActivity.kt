@@ -36,6 +36,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 
 import androidx.compose.animation.Crossfade
 
+import androidx.compose.foundation.isSystemInDarkTheme
+
 import androidx.compose.animation.core.LinearEasing
 
 import androidx.compose.animation.core.RepeatMode
@@ -300,9 +302,15 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             val preferences = remember { mutableStateOf(FocusPreferences.load(this@MainActivity)) }
+            val dark = when (preferences.value.themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
             FocusTheme(
                 accent = FocusColors.accents[preferences.value.accentIndex],
-                textScale = preferences.value.textScale
+                textScale = preferences.value.textScale,
+                dark = dark
             ) {
 
                 CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
@@ -312,7 +320,13 @@ class MainActivity : ComponentActivity() {
                         preferences = preferences.value,
                         onPreferencesChanged = { updated ->
                             FocusPreferences.save(this@MainActivity, updated)
+                            val profileChanged = updated.profile != preferences.value.profile
                             preferences.value = updated
+                            if (profileChanged) {
+                                CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                                    runCatching { ProfilePresets.seed(applicationContext, updated.profile) }
+                                }
+                            }
                         },
 
                         onStartSession = ::startFocusSession,
@@ -593,6 +607,8 @@ private fun AppRoot(
 
                 "subjects" -> SubjectsScreen(onBack = { returnToPreviousTab() })
                 "task_types" -> TaskTypesScreen(onBack = { returnToPreviousTab() })
+                "skills" -> SkillsScreen(onBack = { returnToPreviousTab() })
+                "messages" -> TeamMessagesScreen(onBack = { returnToPreviousTab() })
                 "calendar" -> StudyCalendarScreen(
                     onBack = { returnToPreviousTab() },
                     onStartTask = { taskId -> setupTaskId = taskId }
@@ -604,7 +620,9 @@ private fun AppRoot(
                     onSupport = { openSecondary("support") },
                     onUpdates = { openSecondary("updates") },
                     onPrayerTimes = { openSecondary("prayer_times") },
-                    onTaskTypes = { openSecondary("task_types") }
+                    onTaskTypes = { openSecondary("task_types") },
+                    onSkills = { openSecondary("skills") },
+                    onMessages = { openSecondary("messages") }
                 )
                 "prayer_times" -> PrayerTimesScreen(onBack = { returnToPreviousTab() })
                 "updates" -> AppUpdatesScreen(onBack = { returnToPreviousTab() })
@@ -642,6 +660,7 @@ private fun AppRoot(
                     onOpenAnalytics = { openSecondary("analytics") },
                     dashboard = current == "today",
                     onOpenAllTasks = { rootTab = "tasks" },
+                    onOpenMessages = { openSecondary("messages") },
                     preferences = preferences
 
                 )
@@ -686,6 +705,7 @@ private fun TasksScreen(
     onOpenAnalytics: () -> Unit,
     dashboard: Boolean,
     onOpenAllTasks: () -> Unit,
+    onOpenMessages: () -> Unit,
     preferences: FocusPreferences
 
 ) {
@@ -896,6 +916,8 @@ private fun TasksScreen(
                 Spacer(Modifier.height(10.dp))
                 AccessibilityWarningCard(onEnable = { openAccessibilitySettings(context) })
             }
+            Spacer(Modifier.height(12.dp))
+            TeamMessageBanner(onOpenAll = onOpenMessages)
             Spacer(Modifier.height(12.dp))
             TodayPlanSection(
                 tasks = tasks,
@@ -1222,7 +1244,9 @@ private fun MoreSectionsScreen(
     onSupport: () -> Unit,
     onUpdates: () -> Unit,
     onPrayerTimes: () -> Unit,
-    onTaskTypes: () -> Unit
+    onTaskTypes: () -> Unit,
+    onSkills: () -> Unit,
+    onMessages: () -> Unit
 ) {
     Column(
         Modifier
@@ -1236,6 +1260,8 @@ private fun MoreSectionsScreen(
         Spacer(Modifier.height(16.dp))
         MoreSectionCard("الخطة الأسبوعية", "حوّل مهامك إلى جلسات مذاكرة قابلة للتنفيذ.", "↗", onPlanner)
         MoreSectionCard("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes)
+        MoreSectionCard("مهاراتي", "سجّل المهارات التي تطوّرها، ودقائق التدريب ومستواك فيها.", "✦", onSkills)
+        MoreSectionCard("رسائل الفريق", "إعلانات ومستجدّات تصل بدون تحديث التطبيق.", "✉", onMessages)
         MoreSectionCard("إحصاءاتي", "راجع وقت التركيز والمهام التي أنجزتها.", "◔", onAnalytics)
         MoreSectionCard("تخصيص التجربة", "اضبط اسمك وهدفك اليومي والتذكير والمظهر.", "⚙", onSettings)
         MoreSectionCard("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرًا محليًا.", "☾", onPrayerTimes)

@@ -1,0 +1,16 @@
+{
+  "name": "مُنظِّم — منظّمك الشخصي",
+  "short_name": "مُنظِّم",
+  "description": "مهام، مواعيد، مهارات وجلسات تركيز في مساحة واحدة — مع تحديثات تلقائية.",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#08131F",
+  "theme_color": "#16B8A6",
+  "icons": [
+    { "src": "/brand.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/brand-mark.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

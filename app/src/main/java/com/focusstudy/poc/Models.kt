@@ -125,4 +125,20 @@ data class StudyEvent(
     val notes: String = ""
 )
 
+/** A skill the person is deliberately developing, with practice time and a level they set. */
+data class Skill(
+    val id: Long,
+    val name: String,
+    val category: String = "",
+    val level: Int = 1,
+    val targetLevel: Int = 3,
+    val minutes: Int = 0,
+    val lastPracticedAt: Long = 0L,
+    val createdAt: Long = 0L
+) {
+    /** 0f..1f, so the UI can draw a quiet progress bar without extra state. */
+    val progress: Float
+        get() = if (targetLevel <= 0) 0f else (level.toFloat() / targetLevel).coerceIn(0f, 1f)
+}
+
 data class FocusSessionMetric(val startedAt: Long, val endsAt: Long, val taskId: Long)

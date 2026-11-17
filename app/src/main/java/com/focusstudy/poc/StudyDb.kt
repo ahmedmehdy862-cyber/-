@@ -66,6 +66,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV8(db)
         migrateToV9(db)
         migrateToV10(db)
+        migrateToV11(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -78,6 +79,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 8) migrateToV8(db)
         if (oldVersion < 9) migrateToV9(db)
         if (oldVersion < 10) migrateToV10(db)
+        if (oldVersion < 11) migrateToV11(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -157,6 +159,62 @@ class StudyDb private constructor(context: Context) :
     }
 
     // -------------------------------------------------------------- task types
+
+    fun skills(): List<Skill> = readableDatabase.rawQuery(
+        "SELECT id, name, category, level, target_level, minutes, last_practiced_at, created_at " +
+            "FROM skills ORDER BY name COLLATE NOCASE",
+        null
+    ).use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) {
+                add(
+                    Skill(
+                        id = cursor.getLong(0),
+                        name = cursor.getString(1).orEmpty(),
+                        category = cursor.getString(2).orEmpty(),
+                        level = cursor.getInt(3),
+                        targetLevel = cursor.getInt(4),
+                        minutes = cursor.getInt(5),
+                        lastPracticedAt = cursor.getLong(6),
+                        createdAt = cursor.getLong(7)
+                    )
+                )
+            }
+        }
+    }
+
+    fun addSkill(name: String, category: String = "", targetLevel: Int = 3): Long {
+        require(name.isNotBlank()) { "Skill name cannot be blank" }
+        val values = ContentValues().apply {
+            put("name", name.trim())
+            put("category", category.trim())
+            put("level", 1)
+            put("target_level", targetLevel.coerceIn(1, 5))
+            put("minutes", 0)
+            put("last_practiced_at", 0L)
+            put("created_at", System.currentTimeMillis())
+        }
+        return writableDatabase.insert("skills", null, values)
+    }
+
+    fun logSkillPractice(skillId: Long, minutes: Int) {
+        if (minutes <= 0) return
+        writableDatabase.execSQL(
+            "UPDATE skills SET minutes = minutes + ?, last_practiced_at = ? WHERE id = ?",
+            arrayOf<Any>(minutes, System.currentTimeMillis(), skillId)
+        )
+    }
+
+    fun setSkillLevel(skillId: Long, level: Int) {
+        writableDatabase.execSQL(
+            "UPDATE skills SET level = ? WHERE id = ?",
+            arrayOf<Any>(level.coerceIn(1, 5), skillId)
+        )
+    }
+
+    fun deleteSkill(skillId: Long) {
+        writableDatabase.delete("skills", "id = ?", arrayOf(skillId.toString()))
+    }
 
     fun taskTypes(includeArchived: Boolean = false): List<TaskType> {
         val rows = ArrayList<TaskType>()
@@ -273,6 +331,24 @@ class StudyDb private constructor(context: Context) :
      * `reminders` keeps the alarm schedule per task so it can be rebuilt after a reboot;
      * `notification_log` records delivery and the user's action for the adaptive policy.
      */
+    /** v11 — skills the person is developing, independent of tasks and sessions. */
+    private fun migrateToV11(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS skills(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              name TEXT NOT NULL,
+              category TEXT NOT NULL DEFAULT '',
+              level INTEGER NOT NULL DEFAULT 1,
+              target_level INTEGER NOT NULL DEFAULT 3,
+              minutes INTEGER NOT NULL DEFAULT 0,
+              last_practiced_at INTEGER NOT NULL DEFAULT 0,
+              created_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+
     private fun migrateToV8(db: SQLiteDatabase) {
         db.execSQL(
             """
@@ -1086,7 +1162,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 10
+        private const val DB_VERSION = 11
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 
