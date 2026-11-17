@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 24,
-  "versionName": "0.18.0",
+  "versionCode": 25,
+  "versionName": "0.18.1",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.18.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.18.1/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "مُنظِّم لكل شخص: ملف استخدام (طالب/خريج/موظف/متقاعد/عام) يضيف أقسامًا مناسبة، وشاشة «مهاراتي» لتسجيل المهارات ومستواها ودقائق التدريب، ووضع فاتح/داكن ذكي، ورسائل الفريق تصلك داخل التطبيق بدون تحديث، ولوحة فريق لصندوق الدعم. الموقع صار قابلًا للتثبيت على Windows."
+  "releaseNotes": "خط العناوين الجديد «Zian Black» في التطبيق والموقع، مع تحسينات الملفات الشخصية والمهارات والمظهر الفاتح/الداكن ورسائل الفريق من 0.18.0."
 }

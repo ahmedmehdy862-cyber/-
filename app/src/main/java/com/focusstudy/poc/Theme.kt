@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Density
@@ -120,10 +122,13 @@ private fun lightScheme(accent: Color) = lightColorScheme(
     onError = Color.White
 )
 
+/** Zian Black (arfonts.net, free for personal and commercial use) — headings only. */
+internal val ZianHeading = FontFamily(Font(R.font.zian_black))
+
 private val FocusTypography = Typography(
-    headlineSmall = TextStyle(fontSize = 27.sp, fontWeight = FontWeight.Bold, lineHeight = 34.sp),
-    titleLarge = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 30.sp),
-    titleMedium = TextStyle(fontSize = 18.sp, fontWeight = FontWeight.SemiBold, lineHeight = 26.sp),
+    headlineSmall = TextStyle(fontFamily = ZianHeading, fontSize = 27.sp, fontWeight = FontWeight.Bold, lineHeight = 36.sp),
+    titleLarge = TextStyle(fontFamily = ZianHeading, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 32.sp),
+    titleMedium = TextStyle(fontFamily = ZianHeading, fontSize = 18.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp),
     titleSmall = TextStyle(fontSize = 16.sp, fontWeight = FontWeight.SemiBold, lineHeight = 24.sp),
     bodyLarge = TextStyle(fontSize = 16.sp, lineHeight = 25.sp),
     bodyMedium = TextStyle(fontSize = 15.sp, lineHeight = 23.sp),
