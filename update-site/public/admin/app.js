@@ -160,7 +160,7 @@ document.getElementById("release-form").addEventListener("submit", async (event)
       apkInput.value = apkUrl;
     }
     await callApi("/api/admin/publish", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ versionCode, versionName, releaseNotes, storeUrl, apkUrl, description }) });
-    showStatus(publishStatus, `تم نشر إعلان Focus Study ${versionName}. سيفتح إشعار التحديث صفحة المتجر.`, "ok");
+    showStatus(publishStatus, `تم نشر إعلان مُنظِّم ${versionName}. سيفتح إشعار التحديث صفحة المتجر.`, "ok");
     await loadCurrentRelease();
     document.getElementById("release-notes").value = "";
   } catch (error) {

@@ -1,4 +1,4 @@
-# مُنظِّم (Focus Study) — تطبيق التركيز والتنظيم
+# مُنظِّم — تطبيق التركيز والتنظيم
 
 ## سير العمل اليومي
 
@@ -24,11 +24,11 @@ GitHub repository secrets used by the workflow: `ANDROID_KEYSTORE_BASE64`, `ANDR
 
 ```powershell
 git add .
-git commit -m "Connect Focus Study releases to QUBIXStore"
+git commit -m "Connect MONAZZEM releases to QUBIXStore"
 git push origin main
 ```
 
-For each future release, first update `versionCode` and `versionName`, commit those changes, then create and push the matching tag, for example `git tag focus-v0.26.0; git push origin focus-v0.26.0`. GitHub Actions preflights the live feed, publishes the signed APK, and automatically refreshes and verifies the central feed; QUBIXStore and Focus Study read the new version without another store code edit.
+For each future release, first update `versionCode` and `versionName`, commit those changes, then create and push the matching tag, for example `git tag focus-v0.26.0; git push origin focus-v0.26.0`. GitHub Actions preflights the live feed, publishes the signed APK, and automatically refreshes and verifies the central feed; QUBIXStore and MONAZZEM read the new version without another store code edit.
 
 تطبيق أندرويد أصلي يجمع **تنظيم المهام والوقت** مع **حجب التطبيقات فعليًا** أثناء جلسة التركيز، وليس مجرد قطع الإنترنت.
 
@@ -59,7 +59,7 @@ For each future release, first update `versionCode` and `versionName`, commit th
 adb install -r artifacts/focus-study-poc-debug.apk
 ```
 
-عند أول تشغيل تظهر شاشة إعداد الجلسة قائمة الأذونات؛ اسمح بالإشعارات، وفعّل خدمة *Focus Study* من **«فتح إعدادات الوصول»**، وامنح إذن VPN، ويُستحسن تعطيل تحسين البطارية. زر البدء يبقى معطّلًا حتى تكتمل الأذونات الإلزامية ويُحدَّد تطبيق واحد على الأقل.
+عند أول تشغيل تظهر شاشة إعداد الجلسة قائمة الأذونات؛ اسمح بالإشعارات، وفعّل خدمة *مُنظِّم* من **«فتح إعدادات الوصول»**، وامنح إذن VPN، ويُستحسن تعطيل تحسين البطارية. زر البدء يبقى معطّلًا حتى تكتمل الأذونات الإلزامية ويُحدَّد تطبيق واحد على الأقل.
 
 ## خطة الاختبار
 

@@ -3,7 +3,7 @@
   "versionCode": 34,
   "versionName": "0.26.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/MONAZZEM.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
   "releaseNotes": "إصلاحات حرجة: منع احتساب جلسة التركيز مرتين، اكتشاف فشل الـ VPN بدل الصمت، حماية تعليق التطبيقات في وضع Device Owner، وإصلاح فهم «بعد ساعتين» في الإضافة السريعة."

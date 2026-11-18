@@ -110,7 +110,7 @@ jobs:
         run: ./gradlew --no-daemon assembleRelease -PfocusStudyUpdateFeedUrl=https://update-site-sigma.vercel.app/api/latest
 
       - name: Prepare stable APK asset name
-        run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Focus-Study.apk
+        run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/MONAZZEM.apk
 
       - name: Publish APK as a GitHub Release
         env:
@@ -120,10 +120,10 @@ jobs:
         run: |
           NOTES="$(git log -1 --pretty=%B)"
           if gh release view "$TAG_NAME" >/dev/null 2>&1; then
-            gh release upload "$TAG_NAME" app/build/outputs/apk/release/Focus-Study.apk --clobber
+            gh release upload "$TAG_NAME" app/build/outputs/apk/release/MONAZZEM.apk --clobber
             gh release edit "$TAG_NAME" --title "مُنظِّم $VERSION_NAME" --notes "$NOTES"
           else
-            gh release create "$TAG_NAME" app/build/outputs/apk/release/Focus-Study.apk --title "مُنظِّم $VERSION_NAME" --notes "$NOTES"
+            gh release create "$TAG_NAME" app/build/outputs/apk/release/MONAZZEM.apk --title "مُنظِّم $VERSION_NAME" --notes "$NOTES"
           fi
 
       - name: Sync central feed for the app and QUBIXStore
@@ -136,7 +136,7 @@ jobs:
         run: |
           test -n "$SYNC_TOKEN"
           NOTES="$(git log -1 --pretty=%B)"
-          APK_URL="https://github.com/${REPOSITORY}/releases/download/${TAG_NAME}/Focus-Study.apk"
+          APK_URL="https://github.com/${REPOSITORY}/releases/download/${TAG_NAME}/MONAZZEM.apk"
           export NOTES APK_URL
           python3 - <<'PY' > /tmp/focus-release.json
           import json, os

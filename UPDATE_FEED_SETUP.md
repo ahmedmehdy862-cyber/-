@@ -1,4 +1,4 @@
-# ربط إشعارات تحديث Focus Study
+# ربط إشعارات تحديث مُنظِّم
 
 التطبيق يقرأ سجل JSON عامًّا من `https://update-site-sigma.vercel.app/api/latest` عبر HTTPS، ويقارن `versionCode` المثبت بأحدث إصدار. عند وجود إصدار أعلى، يعرض تنبيهًا مرة واحدة لهذا الإصدار، ويفتح مسار التحديث في المتجر.
 
@@ -12,7 +12,7 @@
   "versionCode": 34,
   "versionName": "0.26.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/MONAZZEM.apk",
   "app": {
     "id": "focus-study",
     "name": "مُنظِّم",
@@ -21,7 +21,7 @@
     "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
     "versionCode": 34,
     "versionName": "0.26.0",
-    "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/Focus-Study.apk",
+    "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/MONAZZEM.apk",
     "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
     "releaseNotes": "إصلاحات حرجة: منع احتساب جلسة التركيز مرتين، اكتشاف فشل الـ VPN بدل الصمت، حماية تعليق التطبيقات في وضع Device Owner، وإصلاح فهم «بعد ساعتين» في الإضافة السريعة."
   },
@@ -52,7 +52,7 @@
 
 1. يتحقق من أن حزمة لوحة الإدارة `app.bundle.js` محدَّثة (`node build-admin.cjs` ثم `git diff --exit-code`).
 2. يتحقق من تطابق الوسم مع `versionName`، ثم من أن الإصدار الجديد **ليس أقدم** من `feed.versionCode` في `/api/latest` — أي أن الأكبر مقبول، والمساوي مقبول فقط إذا كان `versionName` نفسه (لإعادة تشغيل الوسم) — وأن `FOCUS_RELEASE_SYNC_TOKEN` غير فارغ. لا يوجد endpoint للتحقق الآمن في واجهة المزامنة، لذلك لا يُرسل أي POST في هذه المرحلة.
-3. يبني APK موقعًا، ثم ينشئ GitHub Release ويرفع الملف باسم `Focus-Study.apk`.
+3. يبني APK موقعًا، ثم ينشئ GitHub Release ويرفع الملف باسم `MONAZZEM.apk`.
 4. يرسل البيانات إلى `https://update-site-sigma.vercel.app/api/admin/publish-ci`. إعادة تشغيل الوسم بنفس الحمولة لا تكتب شيئًا، وأي تغيير في الحمولة بنفس `versionCode` يُعيد الكتابة، بينما يُرفض `versionCode` الأقل.
 5. يتحقق بGET جديد أن `/api/latest` يعرض `versionCode` و`versionName` الجديدين.
 

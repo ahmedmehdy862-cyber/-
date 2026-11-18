@@ -8,7 +8,7 @@ const base = {
   versionCode: 34,
   versionName: "0.26.0",
   storeUrl: "https://qubixstore.vercel.app/focus-study-updates",
-  apkUrl: "https://github.com/OWNER/REPO/releases/download/focus-v0.26.0/Focus-Study.apk",
+  apkUrl: "https://github.com/OWNER/REPO/releases/download/focus-v0.26.0/MONAZZEM.apk",
   description: "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   releasePageUrl: "https://update-site-sigma.vercel.app/#download",
   releaseNotes: "إصلاحات جديدة.",

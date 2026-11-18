@@ -1,4 +1,4 @@
-# Focus Study Updates (Vercel)
+# تحديثات مُنظِّم (Vercel)
 
 Arabic release page with a protected `/admin/` publishing panel and a `/api/latest` update feed consumed by the Android app. The feed carries **both** `storeUrl` and `apkUrl` (also under `app.apkUrl`), plus `packageName`, `versionCode`, `versionName`, `releasePageUrl`, `releaseNotes`, and the nested `app` record. The app update button follows the store flow; the site still publishes the APK URL for the download page and dashboard.
 
@@ -13,7 +13,7 @@ Local `assembleRelease` builds fail unless `~/.focusstudy/keystore.properties` a
 
 ## Shared release source and automation
 
-`/api/latest` is the canonical Focus Study record. It feeds the Android update checker and the QUBIXStore `/api/latest` proxy. QUBIXStore's Focus Study card, description, version, and download link are rendered from this live response instead of local hard-coded metadata.
+`/api/latest` is the canonical MONAZZEM record. It feeds the Android update checker and the QUBIXStore `/api/latest` proxy. QUBIXStore's MONAZZEM card, description, version, and download link are rendered from this live response instead of local hard-coded metadata.
 
 For automatic publication, deploy this project with `FOCUS_RELEASE_SYNC_TOKEN` set to a long random secret and `BLOB_READ_WRITE_TOKEN` configured. Add the same token as GitHub repository secret `FOCUS_RELEASE_SYNC_TOKEN`, along with the Android signing secrets described in `../.github/workflows/focus-study-release.yml`. Push a tag in the form `focus-vX.Y.Z` matching `versionName` in `app/build.gradle.kts`. The workflow:
 
