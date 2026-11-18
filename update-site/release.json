@@ -1,9 +1,9 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 32,
-  "versionName": "0.25.0",
+  "versionCode": 33,
+  "versionName": "0.25.1",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.25.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.25.1/Focus-Study.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
   "releaseNotes": "شريط تنقّل عائم مرن مع ورقة «كل الأقسام»، نية يومية للتخطيط والعقلية، مركز إشعارات مع زر اختبار، ورسائل لمستخدم بعينه برمزه داخل التطبيق."

@@ -738,7 +738,8 @@ private fun AppRoot(
         }
         }
 
-        if (screen in setOf("today", "tasks")) {
+        // Only the full task list keeps the floating button; the day screen already has one in its header.
+        if (screen == "tasks") {
             // Floats over the corner the bar leaves empty; the list opens upwards from it.
             QuickAddFab(
                 modifier = Modifier
@@ -1494,7 +1495,8 @@ private fun HeroCard(totalMinutes: Int, tasks: List<StudyTask>, preferences: Foc
 
                     Text(
 
-                        text = "$done / ${todayTasks.size}",
+                        // LRM marks keep "1 / 3" reading left-to-right inside the RTL layout.
+                        text = "‎$done / ${todayTasks.size}‎",
 
                         fontSize = 40.sp,
 
