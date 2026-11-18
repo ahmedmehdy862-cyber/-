@@ -28,12 +28,17 @@ android {
     namespace = "com.focusstudy.poc"
     compileSdk = 36
 
+    lint {
+        lintConfig = file("../lint.xml")
+        abortOnError = true
+    }
+
     defaultConfig {
         applicationId = "com.focusstudy.poc"
         minSdk = 26
         targetSdk = 36
-        versionCode = 31
-        versionName = "0.24.0"
+        versionCode = 32
+        versionName = "0.25.0"
         buildConfigField("String", "UPDATE_FEED_URL", "\"$escapedUpdateFeedUrl\"")
     }
 

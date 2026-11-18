@@ -17,6 +17,7 @@ enum class BottomTab(val id: String, val label: String, val mark: String) {
     PLANNER("planner", "الخطة", "↗"),
     ANALYTICS("analytics", "إحصاءاتي", "◔"),
     PRAYER("prayer_times", "الصلاة", "☾"),
+    NOTIFICATIONS("notifications", "الإشعارات", "🔔"),
     UPDATES("updates", "التحديثات", "↻"),
     TASK_TYPES("task_types", "أنواع المهام", "◈"),
     SETTINGS("settings", "التخصيص", "⚙"),

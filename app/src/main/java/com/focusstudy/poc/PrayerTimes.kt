@@ -116,6 +116,13 @@ class PrayerReminderReceiver : BroadcastReceiver() {
 
 internal suspend fun currentApproximateLocation(context: Context): android.location.Location? = suspendCancellableCoroutine { continuation ->
     val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    // Never touch the provider without the grant: on Android 10+ a missing permission throws.
+    val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+    if (!coarse && !fine) {
+        if (continuation.isActive) continuation.resume(null)
+        return@suspendCancellableCoroutine
+    }
     if (Build.VERSION.SDK_INT < 30) {
         @Suppress("DEPRECATION")
         val listener = android.location.LocationListener { location -> if (continuation.isActive) continuation.resume(location) }

@@ -289,9 +289,29 @@ class MainActivity : ComponentActivity() {
 
     ) { }
 
+    override fun onNewIntent(intent: Intent) {
+
+        super.onNewIntent(intent)
+
+        setIntent(intent)
+
+        if (intent.getBooleanExtra(StudyNotificationScheduler.EXTRA_OPEN_TASKS, false)) {
+
+            NotificationNavigation.requestTasks()
+
+        }
+
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
+
+        if (intent?.getBooleanExtra(StudyNotificationScheduler.EXTRA_OPEN_TASKS, false) == true) {
+
+            NotificationNavigation.requestTasks()
+
+        }
 
         SessionEngine.init(this)
         AppUpdateManager.schedule(this)
@@ -515,6 +535,12 @@ private fun AppRoot(
     var rootTab by rememberSaveable {
         mutableStateOf(if (openUpdatesInitially) "updates" else if (openTasksInitially) "tasks" else "today")
     }
+    // A reminder tapped while the app is already running: onNewIntent bumps this counter.
+    val tasksRequest = NotificationNavigation.openTasksRequest
+    LaunchedEffect(tasksRequest) {
+        if (tasksRequest > 0) rootTab = "tasks"
+    }
+    var sectionsOpen by remember { mutableStateOf(false) }
     var previousRootTab by rememberSaveable { mutableStateOf(if (openUpdatesInitially) "more" else "today") }
     fun openSecondary(tab: String) {
         previousRootTab = rootTab
@@ -626,6 +652,12 @@ private fun AppRoot(
                     }
                 )
                 "messages" -> TeamMessagesScreen(onBack = { returnToPreviousTab() })
+                "notifications" -> NotificationCenterScreen(
+                    preferences = preferences,
+                    onBack = { returnToPreviousTab() },
+                    onSave = onPreferencesChanged,
+                    onRequestNotifications = onRequestNotifications
+                )
                 "goals" -> GoalsScreen(onBack = { returnToPreviousTab() })
                 "calendar" -> StudyCalendarScreen(
                     onBack = { returnToPreviousTab() },
@@ -642,7 +674,8 @@ private fun AppRoot(
                     onSkills = { openSecondary("skills") },
                     onMessages = { openSecondary("messages") },
                     onGoals = { openSecondary("goals") },
-                    onBottomBar = { openSecondary("bottom_bar") }
+                    onBottomBar = { openSecondary("bottom_bar") },
+                    onNotifications = { openSecondary("notifications") }
                 )
                 "prayer_times" -> PrayerTimesScreen(onBack = { returnToPreviousTab() })
                 "updates" -> AppUpdatesScreen(onBack = { returnToPreviousTab() })
@@ -672,12 +705,6 @@ private fun AppRoot(
 
                     onEditBlocked = { pickerTaskId = it },
 
-                    onOpenSubjects = { openSecondary("subjects") },
-                    onOpenCalendar = { openSecondary("calendar") },
-                    onOpenSettings = { openSecondary("settings") },
-                    onOpenSupport = { openSecondary("support") },
-                    onOpenPlanner = { openSecondary("planner") },
-                    onOpenAnalytics = { openSecondary("analytics") },
                     dashboard = current == "today",
                     onOpenAllTasks = { rootTab = "tasks" },
                     onOpenMessages = { openSecondary("messages") },
@@ -698,21 +725,16 @@ private fun AppRoot(
         }
 
         if (screen in bottomTabIds) {
-            NavigationBar(containerColor = FocusColors.Surface) {
-                bottomTabIds.forEach { tab ->
-                    val selected = rootTab == tab
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = {
-                            // Tapping the open section goes back to the head of that section.
-                            if (!selected) rootTab = tab
-                        },
-                        icon = { Text(BottomTab.markOf(tab)) },
-                        label = { Text(BottomTab.labelOf(tab), maxLines = 1) },
-                        alwaysShowLabel = true
-                    )
-                }
-            }
+            FocusDock(
+                tabs = bottomTabIds,
+                current = rootTab,
+                onSelect = { tab ->
+                    // Tapping the open section goes back to the head of that section.
+                    if (rootTab != tab) rootTab = tab
+                },
+                onOpenSections = { sectionsOpen = true },
+                modifier = Modifier.padding(start = 14.dp, end = 14.dp, bottom = 10.dp)
+            )
         }
         }
 
@@ -732,6 +754,26 @@ private fun AppRoot(
             )
         }
 
+        if (sectionsOpen) {
+            SectionsSheet(
+                pinned = preferences.bottomTabs,
+                onDismiss = { sectionsOpen = false },
+                onSelect = { tab ->
+                    sectionsOpen = false
+                    openSecondary(tab)
+                },
+                onTogglePin = { tab ->
+                    val current = BottomTab.normalize(preferences.bottomTabs)
+                    val next = when {
+                        tab in current -> current - tab
+                        BottomTab.canAdd(current) -> current + tab
+                        else -> current
+                    }
+                    if (next != current) onPreferencesChanged(preferences.copy(bottomTabs = BottomTab.normalize(next)))
+                }
+            )
+        }
+
     }
 
 }
@@ -744,12 +786,6 @@ private fun TasksScreen(
 
     onEditBlocked: (Long) -> Unit,
 
-    onOpenSubjects: () -> Unit,
-    onOpenCalendar: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenSupport: () -> Unit,
-    onOpenPlanner: () -> Unit,
-    onOpenAnalytics: () -> Unit,
     dashboard: Boolean,
     onOpenAllTasks: () -> Unit,
     onOpenMessages: () -> Unit,
@@ -960,6 +996,11 @@ private fun TasksScreen(
             val todayTasksForWelcome = tasks.filter { it.dueAt.isOnLocalDate(java.time.LocalDate.now()) }
             WelcomeGreeting(
                 name = preferences.studentName,
+                openToday = todayTasksForWelcome.count { !it.isDone && it.status != TaskStatus.DONE },
+                doneToday = todayTasksForWelcome.count { it.isDone || it.status == TaskStatus.DONE }
+            )
+            Spacer(Modifier.height(12.dp))
+            DailyIntentionCard(
                 openToday = todayTasksForWelcome.count { !it.isDone && it.status != TaskStatus.DONE },
                 doneToday = todayTasksForWelcome.count { it.isDone || it.status == TaskStatus.DONE }
             )
@@ -1320,7 +1361,8 @@ private fun MoreSectionsScreen(
     onSkills: () -> Unit,
     onMessages: () -> Unit,
     onGoals: () -> Unit,
-    onBottomBar: () -> Unit
+    onBottomBar: () -> Unit,
+    onNotifications: () -> Unit
 ) {
     Column(
         Modifier
@@ -1355,6 +1397,7 @@ private fun MoreSectionsScreen(
             "شكل التطبيق وما يذكّرك به",
             listOf(
                 MoreItem("تخصيص التجربة", "اسمك وهدفك اليومي والمظهر والملف.", "⚙", onSettings),
+                MoreItem("الإشعارات", "ما يصلك ومتى، واختبار فوري لها.", "🔔", onNotifications),
                 MoreItem("الشريط السفلي", "اختر أقسام الشريط السفلي ورتّبها.", "▥", onBottomBar),
                 MoreItem("مواقيت الصلاة", "احسب المواقيت حسب موقعك واضبط تذكيرها.", "☾", onPrayerTimes)
             )

@@ -1,4 +1,5 @@
 const { readMessages } = require("../lib/messaging-store");
+const { userCode } = require("../lib/user-code");
 
 /**
  * Public feed. A message can be limited to one usage profile (student/professional/…) and to
@@ -15,14 +16,19 @@ module.exports = async function messages(request, response) {
     const uid = String(request.query?.uid || "").trim().toLowerCase();
     const all = await readMessages();
     // A message addressed to one install ignores the audience and version rules: it is personal.
-    const addressedToMe = (target) => {
-      const wanted = String(target || "").trim().toLowerCase();
-      if (!wanted) return null;
+    // It can carry the full install id or the four-four code the app shows, which is derived here
+    // from the id this request already sent — nothing extra is stored or asked for.
+    const myCode = uid ? userCode(uid) : "";
+    const addressedToMe = (item) => {
+      const wantedId = String(item.targetUserId || "").trim().toLowerCase();
+      const wantedCode = String(item.targetCode || "").trim().toUpperCase();
+      if (!wantedId && !wantedCode) return null;
       if (!uid) return false;
-      return uid === wanted || (wanted.length >= 8 && uid.startsWith(wanted));
+      if (wantedId && (uid === wantedId || (wantedId.length >= 8 && uid.startsWith(wantedId)))) return true;
+      return Boolean(wantedCode) && wantedCode === myCode;
     };
     const messages = all.filter((item) => {
-      const personal = addressedToMe(item.targetUserId);
+      const personal = addressedToMe(item);
       if (personal !== null) return personal;
       const audience = String(item.audienceProfile || "").trim();
       const minVersion = Number(item.minVersionCode || 0);

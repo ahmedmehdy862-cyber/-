@@ -110,6 +110,22 @@ internal object StudyNotificationScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+    /** A real notification to look for in the shade: the notification screen's proof button. */
+    fun notifyTest(context: Context) {
+        if (!notificationsAllowed(context)) return
+        post(
+            context = context,
+            channelId = GENERAL_CHANNEL,
+            channelName = "رسائل التشجيع",
+            description = "رسائل صباحية ومسائية اختيارية بالاسم الذي خصصته.",
+            notificationId = 5999,
+            title = "الإشعارات تعمل ✓",
+            message = "هكذا سيصلك تذكير المهام ورسائل الفريق. اضغط لفتح مهامي.",
+            highPriority = false,
+            openTasks = true
+        )
+    }
+
     suspend fun dispatch(context: Context, action: String?) {
         val appContext = context.applicationContext
         when (action) {
@@ -152,16 +168,12 @@ internal object StudyNotificationScheduler {
                     .isBefore(java.time.LocalDate.now())
             } == true
         }
-        val greeting = when {
-            name.isBlank() -> "عندك ${pending.size} مهام تنتظرك"
-            else -> "يا $name، عندك ${pending.size} مهام تنتظرك"
-        }
-        val opener = when {
-            overdue > 0 -> "منها $overdue متأخرة — نبدأ بأصغر واحدة."
-            pending.size == 1 -> "واحدة فقط، والخطوة الأولى أقرب مما تظن."
-            else -> "أقرب خطوة: ${nextTask.title}"
-        }
-        val message = "$greeting. $opener"
+        val message = ReminderCopy.taskNudge(
+            name = name,
+            total = pending.size,
+            overdue = overdue,
+            nextTitle = nextTask.title
+        )
         post(
             context,
             channelId = TASK_CHANNEL,
@@ -186,23 +198,13 @@ internal object StudyNotificationScheduler {
             !it.isDone && it.status != TaskStatus.DONE && it.status != TaskStatus.CANCELLED
         }
         val dueToday = open.filter { it.dueAt?.let { end -> java.time.Instant.ofEpochMilli(end).atZone(java.time.ZoneId.systemDefault()).toLocalDate() == today } == true }
-        val opening = when {
-            dueToday.isNotEmpty() && morning -> "مهام اليوم جاهزة (${dueToday.size}). ابدأ بأخفّها لتبني الإيقاع."
-            dueToday.isNotEmpty() -> "بقيت ${dueToday.size} مهام لليوم. عشر دقائق الآن تُغلق واحدة."
-            open.isNotEmpty() && morning -> "لا شيء مجدول اليوم. اختر من ${open.size} مهام مفتوحة واحدة صغيرة."
-            morning -> "لا مهام بعد. مهمة واحدة تكفي ليكون ليومك اتجاه."
-            else -> "لا شيء ينتظرك الليلة. اكتب مهمة لبكرة وأنت مرتاح."
-        }
-        val messages = if (morning) listOf(
-            "صباحك فرصة جديدة. ابدأ بأصغر خطوة وسترى اليوم يتحرك.",
-            "الإنجاز الكبير يبدأ بتركيز بسيط. اختر أول مهمة الآن.",
-            "اجعل هدفك واضحًا وخطوتك صغيرة، وسهّل على نفسك البداية."
-        ) else listOf(
-            "اقفل يومك بفخر على ما أنجزته، وجهّز خطوة لبكرة.",
-            "حتى الإنجاز الصغير تقدّم يستحق التقدير. تصبح على خير.",
-            "راجع تقدّمك بهدوء وخُذ راحتك. بكرة فرصة جديدة."
+        val message = ReminderCopy.encouragement(
+            name = prefs.studentName.trim(),
+            morning = morning,
+            dueToday = dueToday.size,
+            open = open.size,
+            dayOfYear = today.dayOfYear
         )
-        val message = "$name، ${messages[today.dayOfYear % messages.size]} — " + opening
         post(
             context,
             channelId = GENERAL_CHANNEL,
@@ -213,7 +215,7 @@ internal object StudyNotificationScheduler {
             message = message,
             highPriority = false,
             avatarPath = prefs.avatarPath,
-            openTasks = dueToday.isEmpty()
+            openTasks = true
         )
     }
 

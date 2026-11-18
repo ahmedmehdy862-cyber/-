@@ -24,4 +24,17 @@ object UserIdentity {
 
     /** Short form for the support inbox, still unique enough to paste into the dashboard. */
     fun short(context: Context): String = id(context).take(8)
+
+    /**
+     * A code the person can read over the phone: eight characters of the install id, grouped.
+     *
+     * The dashboard recomputes the same value from the id each request sends, so a message can be
+     * addressed with the code alone — no device id, no account, nothing to look up.
+     */
+    fun code(context: Context): String = codeOf(id(context))
+
+    internal fun codeOf(rawId: String): String {
+        val clean = rawId.lowercase().filter { it.isLetterOrDigit() }.take(8).uppercase()
+        return if (clean.length == 8) clean.chunked(4).joinToString("-") else clean
+    }
 }

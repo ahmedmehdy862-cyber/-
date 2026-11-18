@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!--
+      PropertyEscape only ever fires on local.properties, which is generated per machine by
+      Gradle/Android Studio and never committed. Lint's own suggestion (escaping the drive colon
+      and every backslash) makes Gradle fail to resolve the SDK on Windows, so the check is off.
+    -->
+    <issue id="PropertyEscape" severity="ignore" />
+</lint>

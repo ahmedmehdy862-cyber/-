@@ -51,8 +51,8 @@
         <input id="min-version" type="number" min="0" max="1000000" value="0" style="width:130px">
       </div>
       <div class="row">
-        <label class="meta" for="target-user">لمستخدم بعينه (معرّف الجهاز)</label>
-        <input id="target-user" maxlength="64" placeholder="اتركه فارغًا للجميع — أو الصق معرّفًا من صندوق الدعم">
+        <label class="meta" for="target-user">لمستخدم بعينه — اكتب رمزه</label>
+        <input id="target-user" maxlength="64" placeholder="مثال: AB12-CD34 (الرمز داخل التطبيق › رسائل الفريق)">
       </div>
       <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
     </div>
@@ -78,7 +78,7 @@
     box.innerHTML = messages.map((item) => `
       <div class="item">
         <div><strong>${esc(item.title)}</strong><div class="meta">${esc(item.body)}</div>
-        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}${item.targetUserId ? " · لجهاز " + esc(item.targetUserId) : ""}</div></div>
+        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}${item.targetCode ? " · للرمز " + esc(item.targetCode) : item.targetUserId ? " · لجهاز " + esc(item.targetUserId) : ""}</div></div>
         <button class="ghost" data-delete="${esc(item.id)}">حذف</button>
       </div>`).join("");
     box.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
@@ -95,7 +95,7 @@
       <div class="item">
         <div><strong>${esc(item.name || "بدون اسم")}</strong> <span class="${item.status === "new" ? "new" : "handled"}">${item.status === "new" ? "جديدة" : "تمّت"}</span>
           <div>${esc(item.body)}</div>
-          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}${item.uid ? ` · معرّف <button class="link" data-uid="${esc(item.uid)}">${esc(item.uid.slice(0, 8))}</button>` : ""}</div></div>
+          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}${item.uid ? ` · رمز <button class="link" data-uid="${esc(item.uid)}">${esc(`${item.uid.slice(0, 4)}-${item.uid.slice(4, 8)}`.toUpperCase())}</button>` : ""}</div></div>
         <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
       </div>`).join("");
     box.querySelectorAll("[data-mark]").forEach((btn) => btn.addEventListener("click", async () => {
@@ -136,8 +136,8 @@ const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/a
     if (title.length < 3 || body.length < 3) { status.textContent = "اكتب عنوانًا ونصًا واضحًا."; return; }
     const audienceProfile = document.getElementById("audience").value;
     const minVersionCode = Number(document.getElementById("min-version").value || 0);
-    const targetUserId = document.getElementById("target-user").value.trim();
-    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode, targetUserId }) });
+    const targetRef = document.getElementById("target-user").value.trim();
+    const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode, targetRef }) });
     status.textContent = res.ok ? "نُشرت الرسالة." : "تعذر النشر.";
     if (res.ok) { document.getElementById("title").value = ""; document.getElementById("body").value = ""; load(); }
   });

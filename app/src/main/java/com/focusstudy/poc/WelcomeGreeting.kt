@@ -115,7 +115,7 @@ private fun greet(name: String): String {
 }
 
 private fun hint(openToday: Int, doneToday: Int): String = when {
-    openToday > 0 -> "عندك $openToday مهمة اليوم. اختر واحدة صغيرة وابدأ — الباقي يمشي أسهل."
-    doneToday > 0 -> "أنجزت $doneToday اليوم. لمسة أخيرة: أضف مهمة واحدة لبكرة وأنت مرتاح."
+    openToday > 0 -> taskCountWith(openToday, "عندك اليوم:") + ". اختر واحدة صغيرة وابدأ — الباقي يمشي أسهل."
+    doneToday > 0 -> "أنجزت اليوم ${taskCount(doneToday)}. لمسة أخيرة: أضف مهمة واحدة لبكرة وأنت مرتاح."
     else -> "لم تحدّد مهام اليوم بعد. مهمة واحدة الآن تكفي لتشعر أن اليوم تحت السيطرة."
 }

@@ -230,6 +230,8 @@ internal fun TeamMessagesScreen(onBack: () -> Unit) {
             TextButton(onClick = { reload++ }) { Text(if (loading) "…" else "تحديث") }
         }
         Spacer(Modifier.height(10.dp))
+        MessageCodeCard()
+        Spacer(Modifier.height(12.dp))
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (messages.isEmpty() && !loading) {
                 item {
@@ -315,5 +317,54 @@ internal object TeamNotifier {
             .setAutoCancel(true)
             .build()
         runCatching { manager.notify(message.id.hashCode(), notification) }
+    }
+}
+
+/**
+ * The short code a person can read out to the team.
+ *
+ * It is derived from the install id, so the team addresses one message to it from the dashboard
+ * without ever asking for a device id, and nobody has to create an account.
+ */
+@Composable
+private fun MessageCodeCard() {
+    val context = LocalContext.current
+    val code = remember(context) { UserIdentity.code(context) }
+    val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager }
+    var copied by remember { mutableStateOf(false) }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = FocusColors.SurfaceHigh),
+        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("رمزك للرسائل الخاصة", style = MaterialTheme.typography.labelMedium, color = FocusColors.Blue)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    code,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = FocusColors.TextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = {
+                    clipboard.setPrimaryClip(android.content.ClipData.newPlainText("رمز مُنظِّم", code))
+                    copied = true
+                }) { Text(if (copied) "نُسخ ✓" else "نسخ") }
+                TextButton(onClick = {
+                    val share = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, "رمز مستخدمي في تطبيق مُنظِّم: $code")
+                    }
+                    context.startActivity(Intent.createChooser(share, "إرسال الرمز"))
+                }) { Text("إرسال") }
+            }
+            Text(
+                "أعطِ هذا الرمز للفريق ليصلك رد خاص داخل التطبيق — لا نطلب بريدك ولا معرّف جهازك.",
+                style = MaterialTheme.typography.bodySmall,
+                color = FocusColors.TextSecondary
+            )
+        }
     }
 }
