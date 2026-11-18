@@ -43,14 +43,19 @@ object DeviceOwnerController {
         val targets = packages.filter { it != context.packageName }.toSet()
         if (targets.isEmpty()) return 0
 
+        // Persist synchronously BEFORE suspending: a process kill between the system call and an
+        // asynchronous commit would otherwise leave apps suspended with no way to lift it later.
+        remember(context, targets)
         return runCatching {
             val failed = manager
                 .setPackagesSuspended(admin(context), targets.toTypedArray(), true)
                 ?.toSet()
                 .orEmpty()
             val done = targets - failed
-            if (failed.isNotEmpty()) Log.w(TAG, "could not suspend: $failed")
-            remember(context, done)
+            if (failed.isNotEmpty()) {
+                Log.w(TAG, "could not suspend: $failed")
+                forget(context, failed)
+            }
             done.size
         }.onFailure { Log.w(TAG, "setPackagesSuspended(true) failed", it) }.getOrDefault(0)
     }
@@ -60,12 +65,14 @@ object DeviceOwnerController {
         val stored = stored(context)
         if (stored.isEmpty()) return
         val manager = context.getSystemService(DevicePolicyManager::class.java)
-        if (manager != null && isDeviceOwner(context)) {
-            runCatching {
-                manager.setPackagesSuspended(admin(context), stored.toTypedArray(), false)
-            }.onFailure { Log.w(TAG, "setPackagesSuspended(false) failed", it) }
-        }
-        forget(context)
+        if (manager == null || !isDeviceOwner(context)) return
+        val lifted = runCatching {
+            manager.setPackagesSuspended(admin(context), stored.toTypedArray(), false)
+            true
+        }.onFailure { Log.w(TAG, "setPackagesSuspended(false) failed", it) }.getOrDefault(false)
+        // Keep the record when lifting failed so a later restore/boot can retry instead of leaving
+        // apps suspended forever.
+        if (lifted) forget(context)
     }
 
     fun hasSuspended(context: Context): Boolean = stored(context).isNotEmpty()
@@ -83,10 +90,17 @@ object DeviceOwnerController {
         if (packages.isEmpty()) return
         prefs(context).edit()
             .putStringSet(KEY_SUSPENDED, stored(context) + packages)
-            .apply()
+            .commit()
     }
 
-    private fun forget(context: Context) {
-        prefs(context).edit().remove(KEY_SUSPENDED).apply()
+    private fun forget(context: Context, packages: Set<String>? = null) {
+        val editor = prefs(context).edit()
+        if (packages == null) editor.remove(KEY_SUSPENDED)
+        else {
+            val remaining = stored(context) - packages
+            if (remaining.isEmpty()) editor.remove(KEY_SUSPENDED)
+            else editor.putStringSet(KEY_SUSPENDED, remaining)
+        }
+        editor.commit()
     }
 }

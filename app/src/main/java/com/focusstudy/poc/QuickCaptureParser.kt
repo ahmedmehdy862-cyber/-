@@ -37,7 +37,7 @@ object QuickCaptureParser {
     private val repeatDaily = setOf("يوميًا", "يومياً", "يوميا", "يوميّا")
     private val repeatWeekly = setOf("أسبوعيًا", "اسبوعيًا", "أسبوعياً", "اسبوعياً", "أسبوعيا", "اسبوعيا")
     private val repeatMonthly = setOf("شهريًا", "شهرياً", "شهريا")
-    private val hourUnits = setOf("ساعة", "ساعه", "ساعات", "ساعتين")
+    private val hourUnits = setOf("ساعة", "ساعه", "ساعات")
     private val urgent = setOf("عاجل", "ضروري", "ضروري جدا")
     private val important = setOf("مهم", "مهمة")
     private val fillers = setOf("في", "ف", "على")

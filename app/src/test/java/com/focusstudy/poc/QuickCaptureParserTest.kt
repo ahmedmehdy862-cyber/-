@@ -152,6 +152,14 @@ class QuickCaptureParserTest {
         assertEquals("اتصل بأمي", r.title)
     }
 
+    @Test fun inTwoHoursUsesTwoHours() {
+        val r = QuickCaptureParser.parse("اتصل بأمي بعد ساعتين", today, java.time.LocalTime.of(11, 0))
+        assertEquals(today, r.date)
+        assertEquals(13, r.hour)
+        assertEquals(0, r.minute)
+        assertEquals("اتصل بأمي", r.title)
+    }
+
     @Test fun relativeHalfHourCrossesMidnight() {
         val r = QuickCaptureParser.parse("مكالمة بعد نص ساعة", today, java.time.LocalTime.of(23, 40))
         assertEquals(today.plusDays(1), r.date)

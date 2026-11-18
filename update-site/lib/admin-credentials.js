@@ -1,13 +1,39 @@
 const crypto = require("node:crypto");
 
 const PATH = "focus-study/admin-credential.json";
+// The stored record contains only a scrypt salt/hash, never the password itself. Private access
+// keeps even that hash out of the public Blob URL; reads use the server-side @vercel/blob client
+// with BLOB_READ_WRITE_TOKEN, the same path used by the rest of the API routes.
+const ACCESS = "private";
+const LEGACY_ACCESS = "public";
+
+async function readBlob(access) {
+  const { get } = await import("@vercel/blob");
+  const result = await get(PATH, { access });
+  if (result?.statusCode === 200 && result.stream) {
+    return JSON.parse(await new Response(result.stream).text());
+  }
+  return null;
+}
 
 async function readCredential() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return null;
   try {
-    const { get } = await import("@vercel/blob");
-    const result = await get(PATH, { access: "public" });
-    if (result?.statusCode === 200 && result.stream) return JSON.parse(await new Response(result.stream).text());
+    const current = await readBlob(ACCESS);
+    if (current) return current;
+    // Public and private blobs live on different hosts. Older installs wrote this record to the
+    // public host, so copy it once before deleting the public copy instead of losing admin access.
+    const legacy = await readBlob(LEGACY_ACCESS);
+    if (!legacy) return null;
+    await writeCredential(legacy);
+    try {
+      const { del } = await import("@vercel/blob");
+      await del(PATH, { access: LEGACY_ACCESS });
+    } catch (error) {
+      console.error("legacy credential cleanup failed", error?.message || "unknown");
+    }
+    console.log("admin credential migrated to private Blob");
+    return legacy;
   } catch (error) {
     console.error("credential read failed", error?.message || "unknown");
   }
@@ -17,7 +43,7 @@ async function readCredential() {
 async function writeCredential(record) {
   const { put } = await import("@vercel/blob");
   await put(PATH, JSON.stringify(record), {
-    access: "public",
+    access: ACCESS,
     addRandomSuffix: false,
     allowOverwrite: true,
     contentType: "application/json; charset=utf-8",

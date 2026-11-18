@@ -24,10 +24,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -50,6 +55,17 @@ internal fun NotificationCenterScreen(
     val context = LocalContext.current
     var allowed by remember { mutableStateOf(notificationsGranted(context)) }
     var sent by remember { mutableStateOf(false) }
+    // The permission dialog is async: re-check when the activity resumes instead of immediately
+    // after the request click, which used to leave the card stuck on "denied".
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val refreshPermission = rememberUpdatedState { allowed = notificationsGranted(context) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) refreshPermission.value()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 14.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -59,10 +75,7 @@ internal fun NotificationCenterScreen(
         }
         Spacer(Modifier.height(8.dp))
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
-            StatusCard(allowed, onAllow = {
-                onRequestNotifications()
-                allowed = notificationsGranted(context)
-            })
+            StatusCard(allowed, onAllow = onRequestNotifications)
             Spacer(Modifier.height(12.dp))
             Card(
                 colors = CardDefaults.cardColors(containerColor = FocusColors.Surface),

@@ -1,6 +1,8 @@
 import java.io.FileInputStream
 import java.util.Properties
 
+import org.gradle.api.GradleException
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -9,7 +11,8 @@ plugins {
 // Release signing material lives outside the project so it is never committed or shared:
 //   ~/.focusstudy/keystore.properties  (path, alias, passwords)
 //   ~/.focusstudy/release.jks          (the key itself)
-// Without that file the release build simply stays unsigned instead of failing.
+// assembleRelease fails fast when this is missing; only local experiments may opt out with
+// -PallowUnsignedRelease=true. Never ship an unsigned APK through the release workflow.
 val keystorePropertiesFile = File(System.getProperty("user.home"), ".focusstudy/keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.isFile) {
@@ -18,6 +21,17 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKey = keystorePropertiesFile.isFile &&
     !keystoreProperties.getProperty("storeFile").isNullOrBlank()
+val allowUnsignedRelease = providers.gradleProperty("allowUnsignedRelease")
+    .orNull?.equals("true", ignoreCase = true) == true
+val assemblingRelease = gradle.startParameter.taskNames.any { name ->
+    name == "assembleRelease" || name.substringAfterLast(":") == "assembleRelease"
+}
+if (assemblingRelease && !hasReleaseKey && !allowUnsignedRelease) {
+    throw GradleException(
+        "assembleRelease requires a configured release signing key at $keystorePropertiesFile. " +
+            "For local experiments only, pass -PallowUnsignedRelease=true."
+    )
+}
 // Defaults to the live feed so a plain `assembleRelease` still receives updates;
 // override with -PfocusStudyUpdateFeedUrl=... when testing another feed.
 val defaultUpdateFeedUrl = "https://update-site-sigma.vercel.app/api/latest"
@@ -37,8 +51,8 @@ android {
         applicationId = "com.focusstudy.poc"
         minSdk = 26
         targetSdk = 36
-        versionCode = 33
-        versionName = "0.25.1"
+        versionCode = 34
+        versionName = "0.26.0"
         buildConfigField("String", "UPDATE_FEED_URL", "\"$escapedUpdateFeedUrl\"")
     }
 

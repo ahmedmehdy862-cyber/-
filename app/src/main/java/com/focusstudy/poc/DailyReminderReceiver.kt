@@ -313,6 +313,8 @@ class FocusBootReceiver : BroadcastReceiver() {
                 runCatching { AppUpdateManager.schedule(app) }
                 runCatching { ReminderRescheduleJob.schedule(app) }
                     .onFailure { Log.w(TAG, "update check failed", it) }
+                runCatching { SessionEngine.refresh(app) }
+                    .onFailure { Log.w(TAG, "session recovery failed", it) }
                 Log.i(TAG, "rescheduled after $action")
             } finally {
                 result.finish()

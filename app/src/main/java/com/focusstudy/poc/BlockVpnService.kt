@@ -46,7 +46,7 @@ class BlockVpnService : VpnService() {
                 intent.getStringArrayExtra(EXTRA_PACKAGES)?.toList().orEmpty()
             )
             ACTION_STOP -> stopBlocking()
-            else -> if (!running) stopSelf()
+            else -> if (!running) fail("restarted without a start intent")
         }
         return START_STICKY
     }
@@ -70,58 +70,64 @@ class BlockVpnService : VpnService() {
     }
 
     private fun startBlocking(packages: List<String>) {
-        if (running || packages.isEmpty()) {
-            if (packages.isEmpty()) stopSelf()
+        if (running) return
+        if (packages.isEmpty()) {
+            fail("started without packages to block")
             return
         }
 
-        startForeground(NOTIFICATION_ID, buildNotification(SessionEngine.active.value?.taskTitle))
+        try {
+            startForeground(NOTIFICATION_ID, buildNotification(SessionEngine.active.value?.taskTitle))
 
-        val builder = Builder()
-            .setSession("مُنظِّم")
-            .setMtu(1500)
-            .addAddress("10.111.222.1", 24)
-            .addRoute("0.0.0.0", 0)
-            .addAddress("fd00:1:fd00:1::1", 64)
-            .addRoute("::", 0)
-            .setBlocking(true)
+            val builder = Builder()
+                .setSession("مُنظِّم")
+                .setMtu(1500)
+                .addAddress("10.111.222.1", 24)
+                .addRoute("0.0.0.0", 0)
+                .addAddress("fd00:1:fd00:1::1", 64)
+                .addRoute("::", 0)
+                .setBlocking(true)
 
-        var added = 0
-        for (packageName in packages) {
-            try {
-                builder.addAllowedApplication(packageName)
-                added++
-            } catch (e: PackageManager.NameNotFoundException) {
-                Log.w(TAG, "package not installed: $packageName")
+            var added = 0
+            for (packageName in packages) {
+                try {
+                    builder.addAllowedApplication(packageName)
+                    added++
+                } catch (e: PackageManager.NameNotFoundException) {
+                    Log.w(TAG, "package not installed: $packageName")
+                }
             }
-        }
 
-        if (added == 0) {
-            Log.w(TAG, "no installed package to block, stopping")
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-            return
-        }
+            if (added == 0) {
+                fail("no installed package to block")
+                return
+            }
 
-        val descriptor = try {
-            builder.establish()
+            val descriptor = builder.establish()
+            if (descriptor == null) {
+                fail("establish() returned null")
+                return
+            }
+
+            tunnel = descriptor
+            running = true
+            isRunning = true
+            Log.i(TAG, "session started, blockedApps=$added")
+            worker = thread(name = "vpn-drain", isDaemon = true) { drain(descriptor) }
         } catch (e: Exception) {
-            Log.w(TAG, "establish() threw", e)
-            null
+            fail("could not establish VPN tunnel", e)
         }
+    }
 
-        if (descriptor == null) {
-            Log.w(TAG, "establish() returned null")
-            stopForeground(STOP_FOREGROUND_REMOVE)
-            stopSelf()
-            return
-        }
-
-        tunnel = descriptor
-        running = true
-        isRunning = true
-        Log.i(TAG, "session started, blockedApps=$added")
-        worker = thread(name = "vpn-drain", isDaemon = true) { drain(descriptor) }
+    /** Any failed start/restart must be surfaced instead of leaving the session silently unfiltered. */
+    private fun fail(message: String, error: Throwable? = null) {
+        Log.w(TAG, message, error)
+        SessionEngine.onVpnLost()
+        running = false
+        isRunning = false
+        closeTunnel()
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+        stopSelf()
     }
 
     /** Reads and discards everything the selected apps send. */

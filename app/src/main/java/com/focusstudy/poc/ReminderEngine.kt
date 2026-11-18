@@ -131,7 +131,7 @@ internal object ReminderEngine {
                 .putExtra(EXTRA_KIND, reminder.kind)
             val pending = PendingIntent.getBroadcast(
                 context,
-                requestCode(reminder.taskId, reminder.kind),
+                alarmRequestCode(reminder.id),
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
@@ -174,7 +174,9 @@ internal object ReminderEngine {
             critical = NotificationPolicy.isCritical(dueAt, now) ||
                 NotificationPolicy.isExamCritical(examAt, now) ||
                 kind == ReminderKind.EXAM.key,
-            enabled = prefs.smartRemindersEnabled && prefs.generalNotificationsEnabled,
+            // Task/exam reminders have their own switch; the general-messages switch only controls
+            // the companion's morning/evening messages.
+            enabled = prefs.smartRemindersEnabled,
             density = prefs.notificationDensity,
             deliveredToday = db.deliveredCountSince(startOfDay),
             lastNonCriticalAt = db.lastNonCriticalDelivery(),
@@ -195,7 +197,7 @@ internal object ReminderEngine {
             is ReminderDecision.Defer -> {
                 db.markReminderDone(reminderId, "deferred")
                 val deferred = StoredReminder(-1, taskId, kind, decision.until)
-                scheduleOne(appContext, deferred, requestCode(taskId, kind))
+                scheduleOne(appContext, deferred, deferredAlarmRequestCode(taskId, decision.until))
                 db.logNotification(kind, taskId.takeIf { it >= 0 }, now, null, "deferred:${decision.reason.key()}")
             }
             is ReminderDecision.Drop -> {
@@ -335,16 +337,16 @@ internal object ReminderEngine {
         )
     }
 
-    /** Stable per task and kind: re-scheduling replaces the previous alarm instead of stacking a new one. */
-    private fun requestCode(taskId: Long, kind: String): Int {
-        val kindSlot = when (kind) {
-            ReminderKind.TASK_DUE.key -> 1
-            ReminderKind.TASK_OVERDUE.key -> 2
-            ReminderKind.EXAM.key -> 3
-            else -> 4
-        }
-        return (Math.floorMod(taskId, 9_000L).toInt() * 10 + kindSlot) + 21_000
-    }
+    /**
+     * Unique per stored reminder, not per task/kind. A task can have a lead reminder, a due reminder
+     * and an overdue reminder at the same time; sharing a request code used to silently replace the
+     * earlier alarms.
+     */
+    internal fun alarmRequestCode(reminderId: Long): Int =
+        200_000 + Math.floorMod(reminderId, 500_000L).toInt()
+
+    internal fun deferredAlarmRequestCode(taskId: Long, fireAt: Long): Int =
+        700_000 + Math.floorMod(taskId * 131 + fireAt, 200_000L).toInt()
 
     private fun requestCode(id: Long): Int = Math.floorMod(id, 100_000L).toInt() + 21_000
 

@@ -1134,27 +1134,55 @@ class StudyDb private constructor(context: Context) :
         val db = writableDatabase
         db.beginTransaction()
         try {
-            val previous = task(taskId)
-            db.execSQL(
-                "UPDATE tasks SET done_minutes = done_minutes + ? WHERE id = ?",
-                arrayOf<Any>(minutes, taskId)
-            )
-            db.execSQL(
-                """
-                UPDATE tasks
-                SET status = CASE WHEN status = 'done' OR done_minutes >= planned_minutes THEN 'done' ELSE status END,
-                    is_done = CASE WHEN status = 'done' OR done_minutes >= planned_minutes THEN 1 ELSE 0 END,
-                    completed_at = CASE WHEN done_minutes >= planned_minutes THEN COALESCE(completed_at, ?) ELSE completed_at END
-                WHERE id = ?
-                """.trimIndent(),
-                arrayOf<Any?>(System.currentTimeMillis(), taskId)
-            )
-            val updated = task(taskId)
-            if (previous != null && updated?.status == TaskStatus.DONE && previous.status != TaskStatus.DONE) {
-                createNextRecurringTask(db, previous)
-                awardGoalLinksForTask(taskId)
-            }
+            creditFocusMinutes(db, taskId, minutes)
             db.setTransactionSuccessful()
+        } finally {
+            db.endTransaction()
+        }
+    }
+
+    private fun creditFocusMinutes(db: SQLiteDatabase, taskId: Long, minutes: Int) {
+        if (minutes <= 0) return
+        val previous = task(taskId)
+        db.execSQL(
+            "UPDATE tasks SET done_minutes = done_minutes + ? WHERE id = ?",
+            arrayOf<Any>(minutes, taskId)
+        )
+        db.execSQL(
+            """
+            UPDATE tasks
+            SET status = CASE WHEN status = 'done' OR done_minutes >= planned_minutes THEN 'done' ELSE status END,
+                is_done = CASE WHEN status = 'done' OR done_minutes >= planned_minutes THEN 1 ELSE 0 END,
+                completed_at = CASE WHEN done_minutes >= planned_minutes THEN COALESCE(completed_at, ?) ELSE completed_at END
+            WHERE id = ?
+            """.trimIndent(),
+            arrayOf<Any?>(System.currentTimeMillis(), taskId)
+        )
+        val updated = task(taskId)
+        if (previous != null && updated?.status == TaskStatus.DONE && previous.status != TaskStatus.DONE) {
+            createNextRecurringTask(db, previous)
+            awardGoalLinksForTask(taskId)
+        }
+    }
+
+    /**
+     * Finishes an active session and credits its minutes in one transaction. Returns true only when
+     * this call was the one that moved the row from active to finished, so a racing alarm and ticker
+     * can never double-count the same session.
+     */
+    fun finishSessionOnce(sessionId: Long, taskId: Long, minutes: Int): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            val changed = db.update(
+                "sessions",
+                ContentValues().apply { put("state", "finished") },
+                "id = ? AND state = ?",
+                arrayOf(sessionId.toString(), STATE_ACTIVE)
+            )
+            if (changed > 0) creditFocusMinutes(db, taskId, minutes)
+            db.setTransactionSuccessful()
+            return changed > 0
         } finally {
             db.endTransaction()
         }

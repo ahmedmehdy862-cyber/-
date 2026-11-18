@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import java.time.DayOfWeek
@@ -69,7 +70,13 @@ internal fun StudyAnalyticsScreen(onBack: () -> Unit) {
                     weekDates.forEachIndexed { index, day ->
                         val minutes = state.dailyMinutes[day] ?: 0
                         val barHeight = size.height * (minutes.toFloat() / maxMinutes)
-                        val x = index * slot + (slot - barWidth) / 2f
+                        // The label row follows the layout direction; draw bars in the same order
+                        // so a weekday is never attributed to the neighbouring day's label.
+                        val x = if (layoutDirection == LayoutDirection.Rtl) {
+                            size.width - (index + 1) * slot + (slot - barWidth) / 2f
+                        } else {
+                            index * slot + (slot - barWidth) / 2f
+                        }
                         drawRoundRect(
                             color = if (minutes == 0) FocusColors.Outline else FocusColors.Blue,
                             topLeft = androidx.compose.ui.geometry.Offset(x, size.height - barHeight),

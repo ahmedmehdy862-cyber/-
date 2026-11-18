@@ -1,19 +1,28 @@
 # Focus Study Updates (Vercel)
 
-Arabic release page with a protected `/admin/` publishing panel and a `/api/latest` update feed consumed by the Android app. The app update button and reminders lead to the store listing; the site stores release metadata, notes, version code, and the store URL.
+Arabic release page with a protected `/admin/` publishing panel and a `/api/latest` update feed consumed by the Android app. The feed carries **both** `storeUrl` and `apkUrl` (also under `app.apkUrl`), plus `packageName`, `versionCode`, `versionName`, `releasePageUrl`, `releaseNotes`, and the nested `app` record. The app update button follows the store flow; the site still publishes the APK URL for the download page and dashboard.
 
 ## Publish a store release
 
 1. Increase `versionCode` and `versionName` in `app/build.gradle.kts`.
 2. Publish the signed app to the connected Android store from the store's developer console.
 3. Open `/admin/`, sign in, enter the version shown in the store, release notes, APK URL, app description, and QUBIXStore page URL.
-4. Publish the notice. The app feed and update page then point users to the store listing; no APK installer link is issued by the app.
+4. Publish the notice. The feed, download page, and store card then point users to the store listing and the APK URL from the record.
+
+Local `assembleRelease` builds fail unless `~/.focusstudy/keystore.properties` and the referenced key are present. For local experiments only, pass `-PallowUnsignedRelease=true`; never use that opt-out for a published release.
 
 ## Shared release source and automation
 
 `/api/latest` is the canonical Focus Study record. It feeds the Android update checker and the QUBIXStore `/api/latest` proxy. QUBIXStore's Focus Study card, description, version, and download link are rendered from this live response instead of local hard-coded metadata.
 
-For automatic publication, deploy this project with `FOCUS_RELEASE_SYNC_TOKEN` set to a long random secret and `BLOB_READ_WRITE_TOKEN` configured. Add the same token as GitHub repository secret `FOCUS_RELEASE_SYNC_TOKEN`, along with the Android signing secrets described in `../.github/workflows/focus-study-release.yml`. Push a tag in the form `focus-vX.Y.Z` matching `versionName` in `app/build.gradle.kts`; GitHub Actions builds and signs the APK, publishes a GitHub Release, then posts the version, notes, APK URL, and store URL to `/api/admin/publish-ci`. The version code must increase. The feed and store card refresh within about a minute.
+For automatic publication, deploy this project with `FOCUS_RELEASE_SYNC_TOKEN` set to a long random secret and `BLOB_READ_WRITE_TOKEN` configured. Add the same token as GitHub repository secret `FOCUS_RELEASE_SYNC_TOKEN`, along with the Android signing secrets described in `../.github/workflows/focus-study-release.yml`. Push a tag in the form `focus-vX.Y.Z` matching `versionName` in `app/build.gradle.kts`. The workflow:
+
+1. regenerates `public/admin/app.bundle.js` with `node build-admin.cjs` and fails if the committed bundle is stale;
+2. validates the tag against `versionName`, checks that the new version is not older than `feed.versionCode` on `/api/latest` (an equal code with the same `versionName` is allowed for re-runs), and checks that `SYNC_TOKEN` is non-empty **before** creating or uploading the GitHub Release (there is no harmless validation endpoint on the sync API, so no validation POST is sent);
+3. builds a signed APK, publishes the GitHub Release, then posts the version, notes, APK URL, and store URL to `/api/admin/publish-ci`;
+4. verifies with a fresh GET that `/api/latest` reports the new `versionCode`/`versionName`.
+
+CI publishing is idempotent: a lower `versionCode` is rejected, an identical full payload at the same `versionCode` keeps the existing unchanged response, and any changed field at the same `versionCode` is written as an overwrite. The feed and store card refresh within about a minute.
 
 Manual publishing remains available in `/admin/`: upload the signed APK to a public HTTPS release host such as GitHub Releases, paste its `.apk` URL, and publish the same version and notes. Do not publish an APK built with a different signing key or package ID.
 
@@ -22,18 +31,24 @@ For Vercel CLI deployment from this directory:
 ```powershell
 npm install
 npm run build
+npm run check
 vercel deploy --prod
 ```
 
-The admin account uses the production environment variables `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET`. Keep these private. The first store URL must be saved through the admin panel before publishing a newer version. Installing from a store preserves app data only when the store listing uses the same package ID and a compatible signing certificate.
+The admin credential hash and support inbox are written with `access: "private"` in Vercel Blob and read server-side with `BLOB_READ_WRITE_TOKEN`; the public feed and broadcast messages remain public. Records written to the public host by older versions are copied to the private host on the first read and their public copies are deleted. The admin account uses the production environment variables `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET`. Keep these private. The first store URL must be saved through the admin panel before publishing a newer version. Installing from a store preserves app data only when the store listing uses the same package ID and a compatible signing certificate.
 
-## First-install note
+The current release is `0.26.0` (`versionCode` 34). The app icon and website mark use the same shield and bolt geometry as the in-app logo. The app's signing key is private and must remain consistent with the signing configuration used by the connected store.
 
-The update feed is connected to `https://update-site-sigma.vercel.app/api/latest`. Older installed builds that predate the update checker cannot receive its notifications. Keep the package ID and signing key consistent across releases so store updates can be installed over existing versions.
+## Post-deploy smoke test
 
-The current release is `0.12.0` (`versionCode` 13). It adds on-device prayer time calculation from approximate location, configurable calculation methods, and local prayer reminders. The app icon and website mark use the same shield and bolt geometry as the in-app logo.
+After every deployment, check the live feed and the admin page:
 
-The app's signing key is private and must remain consistent with the signing configuration used by the connected store.
+```powershell
+curl.exe -fsS https://update-site-sigma.vercel.app/api/latest
+curl.exe -fsS -o NUL -w "admin HTTP %{http_code}`n" https://update-site-sigma.vercel.app/admin/
+```
+
+The first command must return JSON with the expected `versionCode`, `versionName`, and a non-empty `apkUrl`; the second must return HTTP 200. Do not include tokens or credentials in these requests.
 
 ## Local preview
 

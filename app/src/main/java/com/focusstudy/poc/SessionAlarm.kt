@@ -28,12 +28,17 @@ object SessionAlarm {
         val pendingIntent = pending(context)
         val exact = Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
             runCatching { manager.canScheduleExactAlarms() }.getOrDefault(false)
-        runCatching {
-            if (exact) {
+        val scheduled = if (exact) {
+            runCatching {
                 manager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pendingIntent)
-            } else {
-                manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pendingIntent)
             }
+        } else {
+            runCatching { manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pendingIntent) }
+        }
+        if (exact && scheduled.isFailure) {
+            // Some OEMs refuse exact alarms even when canScheduleExactAlarms() returns true.
+            // An inexact alarm is better than a session that never releases its apps.
+            runCatching { manager.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, atMillis, pendingIntent) }
         }
     }
 

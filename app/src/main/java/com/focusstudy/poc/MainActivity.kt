@@ -301,6 +301,16 @@ class MainActivity : ComponentActivity() {
 
         }
 
+        if (intent.getBooleanExtra(AppUpdateManager.EXTRA_OPEN_UPDATES, false)) {
+
+            NotificationNavigation.requestUpdates()
+
+        }
+
+        val taskId = intent.getLongExtra(ReminderEngine.EXTRA_TASK_ID, 0L)
+
+        if (taskId > 0L) NotificationNavigation.requestTask(taskId)
+
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -539,6 +549,17 @@ private fun AppRoot(
     val tasksRequest = NotificationNavigation.openTasksRequest
     LaunchedEffect(tasksRequest) {
         if (tasksRequest > 0) rootTab = "tasks"
+    }
+    val updatesRequest = NotificationNavigation.openUpdatesRequest
+    LaunchedEffect(updatesRequest) {
+        if (updatesRequest > 0) rootTab = "updates"
+    }
+    val requestedTaskId = NotificationNavigation.requestedTaskId
+    LaunchedEffect(requestedTaskId) {
+        if (requestedTaskId != null && requestedTaskId > 0L) {
+            setupTaskId = requestedTaskId
+            NotificationNavigation.clearTaskRequest()
+        }
     }
     var sectionsOpen by remember { mutableStateOf(false) }
     var previousRootTab by rememberSaveable { mutableStateOf(if (openUpdatesInitially) "more" else "today") }
@@ -1041,6 +1062,12 @@ private fun TasksScreen(
                     val start = java.time.LocalDate.now().plusDays(1)
                         .atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
                     viewModel.reschedule(task.id, start)
+                },
+                onScheduleToday = { task ->
+                    val endOfToday = java.time.LocalDate.now()
+                        .atTime(23, 59)
+                        .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+                    viewModel.reschedule(task.id, endOfToday)
                 },
                 onAddTask = { showAddDialog = true }
             )
@@ -1656,9 +1683,12 @@ private fun TaskCard(
     )
 
     val accentText = FocusColors.onTint(accent)
-    val dayMillis = 24L * 60L * 60L * 1000L
-    val todayStart = java.time.LocalDate.now().atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
-    val tomorrowStart = todayStart + dayMillis
+    val zone = java.time.ZoneId.systemDefault()
+    val today = java.time.LocalDate.now()
+    fun startOfDayAfter(days: Long): Long =
+        today.plusDays(days).atStartOfDay(zone).toInstant().toEpochMilli()
+    val todayStart = startOfDayAfter(0)
+    val tomorrowStart = startOfDayAfter(1)
     var moreExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -1838,8 +1868,8 @@ private fun TaskCard(
                             DropdownMenuItem(text = { Text("المهام الفرعية") }, onClick = { moreExpanded = false; onSubtasks() })
                             DropdownMenuItem(text = { Text("اليوم") }, onClick = { moreExpanded = false; onReschedule(todayStart) }, enabled = !task.isDone)
                             DropdownMenuItem(text = { Text("غدًا") }, onClick = { moreExpanded = false; onReschedule(tomorrowStart) }, enabled = !task.isDone)
-                            DropdownMenuItem(text = { Text("بعد 3 أيام") }, onClick = { moreExpanded = false; onReschedule(todayStart + 3 * dayMillis) }, enabled = !task.isDone)
-                            DropdownMenuItem(text = { Text("الأسبوع القادم") }, onClick = { moreExpanded = false; onReschedule(todayStart + 7 * dayMillis) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("بعد 3 أيام") }, onClick = { moreExpanded = false; onReschedule(startOfDayAfter(3)) }, enabled = !task.isDone)
+                            DropdownMenuItem(text = { Text("الأسبوع القادم") }, onClick = { moreExpanded = false; onReschedule(startOfDayAfter(7)) }, enabled = !task.isDone)
                             DropdownMenuItem(text = { Text("بدون موعد") }, onClick = { moreExpanded = false; onReschedule(null) }, enabled = !task.isDone && task.dueAt != null)
                             DropdownMenuItem(text = { Text("نسخ المهمة") }, onClick = { moreExpanded = false; onDuplicate() })
                         }

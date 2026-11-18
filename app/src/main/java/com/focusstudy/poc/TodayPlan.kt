@@ -88,6 +88,7 @@ internal fun TodayPlanSection(
     onToggleDone: (StudyTask) -> Unit,
     onStartTask: (Long) -> Unit,
     onDeferToTomorrow: (StudyTask) -> Unit,
+    onScheduleToday: (StudyTask) -> Unit,
     onAddTask: () -> Unit
 ) {
     val groups = DayPlan.build(tasks, LocalDate.now())
@@ -159,6 +160,7 @@ internal fun TodayPlanSection(
                         task = task,
                         onToggleDone = { onToggleDone(task) },
                         onStart = { onStartTask(task.id) },
+                        onScheduleToday = { onScheduleToday(task) },
                         onDefer = { onDeferToTomorrow(task) }
                     )
                 }
@@ -173,6 +175,7 @@ private fun TodayPlanRow(
     task: StudyTask,
     onToggleDone: () -> Unit,
     onStart: () -> Unit,
+    onScheduleToday: () -> Unit,
     onDefer: () -> Unit
 ) {
     Row(
@@ -201,7 +204,7 @@ private fun TodayPlanRow(
         }
         Spacer(Modifier.width(6.dp))
         if (task.dueAt == null) {
-            BoxedAction("اليوم") { onDefer() }
+            BoxedAction("اليوم") { onScheduleToday() }
         } else {
             BoxedAction("ابدأ", onClick = onStart)
         }

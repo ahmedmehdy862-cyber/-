@@ -6,7 +6,8 @@
     "node": "24.x"
   },
   "scripts": {
-    "build": "node build-admin.cjs"
+    "build": "node build-admin.cjs",
+    "check": "node scripts/check-release-publish.cjs"
   },
   "dependencies": {
     "@vercel/blob": "2.9.0"

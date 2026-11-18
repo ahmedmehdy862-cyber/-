@@ -97,11 +97,13 @@ object TeamMessages {
         val seen = prefs(context).getStringSet(SEEN, emptySet()).orEmpty().toMutableSet()
         val unseen = messages.filter { it.id.isNotBlank() && it.id !in seen }
         if (unseen.isEmpty()) return
+        // Every message reaches the notification shade, not just the newest one: after a few days
+        // offline a person would otherwise never learn about the ones in between. Mark them seen
+        // only after a notification was actually posted, so permission denials can be retried.
+        val delivered = TeamNotifier.notifyEach(context, unseen)
+        if (!delivered) return
         seen.addAll(unseen.map { it.id })
         prefs(context).edit().putStringSet(SEEN, seen).apply()
-        // Every message reaches the notification shade, not just the newest one: after a few days
-        // offline a person would otherwise never learn about the ones in between.
-        TeamNotifier.notifyEach(context, unseen)
     }
 
     private const val SEEN = "seen"
@@ -270,11 +272,12 @@ internal object TeamNotifier {
     private const val MAX_INDIVIDUAL = 4
 
     /** One notification per message, then a count for the rest so the shade never floods. */
-    fun notifyEach(context: Context, messages: List<TeamMessage>) {
-        messages.take(MAX_INDIVIDUAL).forEach { notify(context, it) }
+    fun notifyEach(context: Context, messages: List<TeamMessage>): Boolean {
+        var delivered = false
+        messages.take(MAX_INDIVIDUAL).forEach { delivered = notify(context, it) || delivered }
         val rest = messages.size - MAX_INDIVIDUAL
         if (rest > 0) {
-            notify(
+            delivered = notify(
                 context,
                 TeamMessage(
                     id = "team-digest-${messages.first().id}",
@@ -282,12 +285,13 @@ internal object TeamNotifier {
                     body = "افتح «رسائل الفريق» لقراءتها كلها.",
                     at = messages.first().at
                 )
-            )
+            ) || delivered
         }
+        return delivered
     }
 
-    fun notify(context: Context, message: TeamMessage) {
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+    fun notify(context: Context, message: TeamMessage): Boolean {
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return false
         if (android.os.Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(
                 NotificationChannel(CHANNEL, "رسائل الفريق", NotificationManager.IMPORTANCE_DEFAULT)
@@ -295,7 +299,7 @@ internal object TeamNotifier {
         }
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
+        ) return false
         val intent = PendingIntent.getActivity(
             context,
             0,
@@ -316,7 +320,7 @@ internal object TeamNotifier {
             .setContentIntent(intent)
             .setAutoCancel(true)
             .build()
-        runCatching { manager.notify(message.id.hashCode(), notification) }
+        return runCatching { manager.notify(message.id.hashCode(), notification) }.isSuccess
     }
 }
 

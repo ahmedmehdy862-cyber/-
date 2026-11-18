@@ -15,11 +15,78 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24.x"
+          cache: npm
+          cache-dependency-path: update-site/package-lock.json
+
+      - name: Verify committed admin bundle
+        run: |
+          cd update-site
+          npm ci
+          node build-admin.cjs
+          cd "$GITHUB_WORKSPACE"
+          git diff --exit-code -- update-site/public/admin/app.bundle.js
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
+
+      - name: Read release metadata
+        id: metadata
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          text = open("app/build.gradle.kts", encoding="utf-8").read()
+          code = re.search(r"versionCode\s*=\s*(\d+)", text)
+          name = re.search(r'versionName\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', text)
+          if not code or not name:
+              raise SystemExit("Could not read versionCode/versionName from app/build.gradle.kts")
+          tag = os.environ["TAG_NAME"]
+          if tag != f"focus-v{name.group(1)}":
+              raise SystemExit(f"Tag {tag} does not match app version {name.group(1)}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
+              out.write(f"version_code={code.group(1)}\nversion_name={name.group(1)}\n")
+          PY
+
+      - name: Preflight update feed before release
+        env:
+          SYNC_TOKEN: ${{ secrets.FOCUS_RELEASE_SYNC_TOKEN }}
+          VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "FOCUS_RELEASE_SYNC_TOKEN is empty" >&2
+            exit 1
+          fi
+          # The only sync endpoint publishes immediately; there is no harmless validation or
+          # dry-run endpoint in this API. Check the public feed and the token, then stop before
+          # creating or uploading any GitHub Release if either check fails.
+          curl --fail-with-body --silent --show-error \
+            "https://update-site-sigma.vercel.app/api/latest?preflight=$(date +%s)" \
+            -o /tmp/focus-latest-before.json
+          python3 - <<'PY'
+          import json, os
+          with open("/tmp/focus-latest-before.json", encoding="utf-8") as stream:
+              feed = json.load(stream)
+          feed_code = int(feed["versionCode"])
+          feed_name = str(feed.get("versionName") or "")
+          new_code = int(os.environ["VERSION_CODE"])
+          new_name = os.environ["VERSION_NAME"]
+          # A Vercel deploy of release.json may already have published this same version; that is
+          # fine. Reject an older code, or an equal code with a different version name.
+          if new_code < feed_code or (new_code == feed_code and feed_name != new_name):
+              raise SystemExit(
+                  f"Release version conflicts with feed: new={new_code}/{new_name}, feed={feed_code}/{feed_name}"
+              )
+          print(f"Preflight OK: feed={feed_code}/{feed_name}, new={new_code}/{new_name}")
+          PY
 
       - name: Restore Android release signing key
         env:
@@ -44,25 +111,6 @@ jobs:
 
       - name: Prepare stable APK asset name
         run: cp app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/release/Focus-Study.apk
-
-      - name: Read release metadata
-        id: metadata
-        env:
-          TAG_NAME: ${{ github.ref_name }}
-        run: |
-          python3 - <<'PY'
-          import os, re
-          text = open("app/build.gradle.kts", encoding="utf-8").read()
-          code = re.search(r"versionCode\s*=\s*(\d+)", text)
-          name = re.search(r'versionName\s*=\s*"([0-9]+\.[0-9]+\.[0-9]+)"', text)
-          if not code or not name:
-              raise SystemExit("Could not read versionCode/versionName from app/build.gradle.kts")
-          tag = os.environ["TAG_NAME"]
-          if tag != f"focus-v{name.group(1)}":
-              raise SystemExit(f"Tag {tag} does not match app version {name.group(1)}")
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as out:
-              out.write(f"version_code={code.group(1)}\nversion_name={name.group(1)}\n")
-          PY
 
       - name: Publish APK as a GitHub Release
         env:
@@ -106,3 +154,34 @@ jobs:
             -H "Content-Type: application/json" \
             --data-binary @/tmp/focus-release.json \
             https://update-site-sigma.vercel.app/api/admin/publish-ci
+
+      - name: Verify update feed after sync
+        env:
+          VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
+          VERSION_NAME: ${{ steps.metadata.outputs.version_name }}
+        run: |
+          python3 - <<'PY'
+          import json, os, time, urllib.request
+          expected_code = int(os.environ["VERSION_CODE"])
+          expected_name = os.environ["VERSION_NAME"]
+          last = "no response"
+          for attempt in range(1, 13):
+              url = f"https://update-site-sigma.vercel.app/api/latest?verify={int(time.time())}"
+              try:
+                  with urllib.request.urlopen(url, timeout=10) as response:
+                      feed = json.load(response)
+                  actual_code = int(feed.get("versionCode") or 0)
+                  actual_name = str(feed.get("versionName") or "")
+                  if actual_code == expected_code and actual_name == expected_name:
+                      print(f"Feed verified: {actual_code} / {actual_name}")
+                      break
+                  last = f"{actual_code} / {actual_name}"
+              except Exception as error:
+                  last = str(error)
+              if attempt < 12:
+                  time.sleep(10)
+          else:
+              raise SystemExit(
+                  f"Feed did not report {expected_code} / {expected_name} after sync; last={last}"
+              )
+          PY

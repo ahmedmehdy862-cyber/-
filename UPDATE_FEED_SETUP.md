@@ -1,38 +1,70 @@
 # ربط إشعارات تحديث Focus Study
 
-التطبيق يقرأ ملف JSON صغيرًا عبر HTTPS، ويقارن `versionCode` المثبت بأحدث إصدار. عند وجود إصدار أحدث، يعرض تنبيهًا مرة واحدة لهذا الإصدار، ويفتح صفحة المتجر عند طلب التحديث.
+التطبيق يقرأ سجل JSON عامًّا من `https://update-site-sigma.vercel.app/api/latest` عبر HTTPS، ويقارن `versionCode` المثبت بأحدث إصدار. عند وجود إصدار أعلى، يعرض تنبيهًا مرة واحدة لهذا الإصدار، ويفتح مسار التحديث في المتجر.
 
-## ملف latest.json
+## صيغة /api/latest
 
-استضف سجل إصدار عامًّا عبر HTTPS، أو استخدم موقع Vercel. يحتوي السجل على رابط صفحة التطبيق في المتجر، ولا يحتوي على رابط APK للتثبيت المباشر. هذه صيغة الاستجابة التي يقرأها التطبيق:
+السجل يحتوي على رابط المتجر **ورابط APK معًا**؛ `apkUrl` و`app.apkUrl` مذكوران صراحةً في الاستجابة وتستخدمهما صفحة التنزيل ولوحة الإدارة. هذه صيغة الاستجابة الفعلية التي يقرأها التطبيق:
 
 ```json
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 12,
-  "versionName": "0.11.0",
+  "versionCode": 34,
+  "versionName": "0.26.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/OWNER/REPO/releases/download/focus-v0.11.0/Focus-Study.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/Focus-Study.apk",
+  "app": {
+    "id": "focus-study",
+    "name": "مُنظِّم",
+    "category": "تعليم",
+    "developer": "مُنظِّم",
+    "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
+    "versionCode": 34,
+    "versionName": "0.26.0",
+    "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.26.0/Focus-Study.apk",
+    "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
+    "releaseNotes": "إصلاحات حرجة: منع احتساب جلسة التركيز مرتين، اكتشاف فشل الـ VPN بدل الصمت، حماية تعليق التطبيقات في وضع Device Owner، وإصلاح فهم «بعد ساعتين» في الإضافة السريعة."
+  },
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "تحسينات جديدة وإصلاحات للأخطاء."
+  "releaseNotes": "إصلاحات حرجة: منع احتساب جلسة التركيز مرتين، اكتشاف فشل الـ VPN بدل الصمت، حماية تعليق التطبيقات في وضع Device Owner، وإصلاح فهم «بعد ساعتين» في الإضافة السريعة."
 }
 ```
 
-`packageName` يجب أن يطابق الحزمة، ويجب أن يطابق `versionCode` الإصدار المنشور ويزداد مع كل إصدار. `storeUrl` يفتح صفحة QUBIXStore، بينما `apkUrl` هو ملف APK الذي يظهر في صفحة المتجر. يظل إشعار التطبيق موجّهًا إلى صفحة المتجر.
+`publishedAt` قد يظهر في سجل التخزين الداخلي ولا يُعرض في `/api/latest`. يجب أن يطابق `packageName` الحزمة، وأن يزداد `versionCode` مع كل إصدار. `storeUrl` يفتح صفحة QUBIXStore، بينما `apkUrl` هو ملف APK المنشور على GitHub Releases؛ كلاهما متاح في الموجز.
 
 ## ربط الرابط بالتطبيق
 
-مرّر عنوان ملف JSON عند بناء APK. عنوان المشروع الحالي:
+العنوان الافتراضي مضبوط على الموجز الحي، ويمكن تمريره صراحةً عند بناء APK:
 
 ```powershell
 .\gradlew.bat assembleRelease -PfocusStudyUpdateFeedUrl="https://update-site-sigma.vercel.app/api/latest"
 ```
 
-إذا كان العنوان غير مضبوط، ستعرض شاشة «تحديثات التطبيق» أن المصدر غير مربوط. بعد ضبطه، يفحص التطبيق عند فتحه ومرة يوميًا، ويرسل إشعارًا عند اكتشاف إصدار أعلى. عند الضغط على التحديث يفتح صفحة التطبيق في المتجر.
+`assembleRelease` يفشل الآن إذا لم يكن مفتاح التوقيع مضبوطًا في `~/.focusstudy/keystore.properties`. للتجارب المحلية فقط يمكن تمرير `-PallowUnsignedRelease=true`؛ لا تستخدم هذا الخيار للنشر. إذا كان عنوان الموجز غير مضبوط، ستعرض شاشة «تحديثات التطبيق» أن المصدر غير مربوط. بعد ضبطه، يفحص التطبيق عند فتحه ومرة يوميًا، ويرسل إشعارًا عند اكتشاف إصدار أعلى.
 
 ## نشر إصدار من لوحة الإدارة
 
-افتح [لوحة إدارة التحديثات](https://update-site-sigma.vercel.app/admin/)، وسجّل الدخول، واربط رابط المتجر. بعد نشر الإصدار في المتجر، اكتب اسمه ورقمه وملاحظاته في اللوحة وانشر إشعار التحديث. يجب أن يطابق توقيع المتجر النسخة المثبتة حتى يتم التحديث فوقها وتبقى بيانات الطالب. لا تشارك بيانات دخول الإدارة.
+افتح [لوحة إدارة التحديثات](https://update-site-sigma.vercel.app/admin/)، وسجّل الدخول، واربط رابط المتجر. بعد نشر الإصدار في المتجر، اكتب اسمه ورقمه وملاحظاته ورابط الـ APK في اللوحة وانشر إشعار التحديث. يجب أن يطابق توقيع المتجر النسخة المثبتة حتى يتم التحديث فوقها وتبقى بيانات الطالب. لا تشارك بيانات دخول الإدارة.
 
-للنشر الآلي، ادفع وسمًا مثل `focus-v0.12.0` بعد رفع `versionName` و`versionCode` في Gradle. يرفع GitHub Actions APK إلى GitHub Release ثم يرسل بياناته إلى `https://update-site-sigma.vercel.app/api/admin/publish-ci`. اضبط أسرار `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, و`FOCUS_RELEASE_SYNC_TOKEN` في مستودع التطبيق، واجعل `FOCUS_RELEASE_SYNC_TOKEN` و`BLOB_READ_WRITE_TOKEN` متاحين لمشروع Vercel الخاص بموجز التحديثات. لا ترفع ملف التوقيع أو الأسرار إلى Git.
+## النشر الآلي بالوسم (tag)
 
+للنشر الآلي، ارفع `versionName` و`versionCode` في `app/build.gradle.kts`، ثم ادفع وسمًا مثل `focus-v0.26.0` يطابق `versionName` تمامًا. سير العمل في `.github/workflows/focus-study-release.yml` ينفّذ الترتيب التالي:
+
+1. يتحقق من أن حزمة لوحة الإدارة `app.bundle.js` محدَّثة (`node build-admin.cjs` ثم `git diff --exit-code`).
+2. يتحقق من تطابق الوسم مع `versionName`، ثم من أن الإصدار الجديد **ليس أقدم** من `feed.versionCode` في `/api/latest` — أي أن الأكبر مقبول، والمساوي مقبول فقط إذا كان `versionName` نفسه (لإعادة تشغيل الوسم) — وأن `FOCUS_RELEASE_SYNC_TOKEN` غير فارغ. لا يوجد endpoint للتحقق الآمن في واجهة المزامنة، لذلك لا يُرسل أي POST في هذه المرحلة.
+3. يبني APK موقعًا، ثم ينشئ GitHub Release ويرفع الملف باسم `Focus-Study.apk`.
+4. يرسل البيانات إلى `https://update-site-sigma.vercel.app/api/admin/publish-ci`. إعادة تشغيل الوسم بنفس الحمولة لا تكتب شيئًا، وأي تغيير في الحمولة بنفس `versionCode` يُعيد الكتابة، بينما يُرفض `versionCode` الأقل.
+5. يتحقق بGET جديد أن `/api/latest` يعرض `versionCode` و`versionName` الجديدين.
+
+اضبط أسرار `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, و`FOCUS_RELEASE_SYNC_TOKEN` في مستودع التطبيق، واجعل `FOCUS_RELEASE_SYNC_TOKEN` و`BLOB_READ_WRITE_TOKEN` متاحين لمشروع Vercel الخاص بموجز التحديثات. لا ترفع ملف التوقيع أو الأسرار إلى Git.
+
+## فحص ما بعد النشر (smoke test)
+
+بعد كل نشر أو `vercel deploy --prod`، تحقق من الموجز ومن لوحة الإدارة:
+
+```powershell
+curl.exe -fsS https://update-site-sigma.vercel.app/api/latest
+curl.exe -fsS -o NUL -w "admin HTTP %{http_code}`n" https://update-site-sigma.vercel.app/admin/
+```
+
+الأول يجب أن يعرض `versionCode` و`versionName` الجديدين مع `apkUrl`، والثاني يجب أن يعيد HTTP 200. لا تضع أي رمز أو كلمة مرور في أوامر الفحص.

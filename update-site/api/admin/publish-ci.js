@@ -1,6 +1,6 @@
 const { safeEqual, parseBody, json } = require("../../lib/admin-auth");
 const { put } = require("@vercel/blob");
-const { RELEASE_PATH, readLatestRelease } = require("../../lib/release-store");
+const { RELEASE_PATH, readLatestRelease, decideCiPublish } = require("../../lib/release-store");
 
 module.exports = async function publishFromCi(req, res) {
   if (req.method !== "POST") return json(res, 405, { error: "method_not_allowed" });
@@ -20,14 +20,6 @@ module.exports = async function publishFromCi(req, res) {
     if (!Number.isInteger(versionCode) || versionCode < 1 || !/^\d+\.\d+\.\d+$/.test(versionName) || !releaseNotes || !apkUrl) {
       return json(res, 400, { error: "release_fields_required" });
     }
-    const current = await readLatestRelease();
-    const currentCode = Number(current.versionCode || 0);
-    // A re-run of the same tag must not fail: the feed already carries this build because the
-    // deployment ships release.json. Only a lower or conflicting version is refused.
-    if (versionCode === currentCode && String(current.versionName) === versionName) {
-      return json(res, 200, { ok: true, unchanged: true, release: current });
-    }
-    if (versionCode <= currentCode) return json(res, 409, { error: "version_code_must_increase", currentVersionCode: current.versionCode });
 
     const validHttps = (value) => {
       try {
@@ -42,11 +34,23 @@ module.exports = async function publishFromCi(req, res) {
     const host = String(req.headers["x-forwarded-host"] || req.headers.host || "").split(",")[0].trim();
     if (!host) return json(res, 400, { error: "release_host_missing" });
 
+    // `publishedAt` is added only on a real write so an identical re-run stays byte-for-byte
+    // comparable with the shipped release.json.
     const release = {
       packageName: "com.focusstudy.poc", versionCode, versionName, storeUrl, apkUrl, description,
-      releasePageUrl: `https://${host}/#download`, releaseNotes, publishedAt: new Date().toISOString()
+      releasePageUrl: `https://${host}/#download`, releaseNotes,
     };
-    await put(RELEASE_PATH, JSON.stringify(release), {
+
+    const current = await readLatestRelease();
+    const decision = decideCiPublish(current, release);
+    if (decision.action === "reject") {
+      return json(res, 409, { error: decision.error, currentVersionCode: current.versionCode });
+    }
+    if (decision.action === "unchanged") {
+      return json(res, 200, { ok: true, unchanged: true, release: current });
+    }
+
+    await put(RELEASE_PATH, JSON.stringify({ ...release, publishedAt: new Date().toISOString() }), {
       access: "public", addRandomSuffix: false, allowOverwrite: true,
       contentType: "application/json; charset=utf-8", cacheControlMaxAge: 60
     });
