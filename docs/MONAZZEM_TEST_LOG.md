@@ -9,7 +9,12 @@
 | `lintDebug` + `lintVitalRelease` | ✅ بلا أخطاء (`abortOnError = true`) |
 | `npm run check` + `npm run build` في `update-site` | ✅ ناجحان، وفحص دوال `node --check` لملفات الرسائل ناجح |
 | تسجيل مستخدم تجريبي محليًا | ✅ `POST /api/messages` أعاد 200 والرمز `ABCD-EF12`، والحمولة غير الصالحة رُفضت 400، والسجل الخاص حفظ الاسم والإصدار |
-| نشر MONAZZEM وQUBIXStore والتحقق من `/api/latest` | ⏳ يُحدَّث بعد التنفيذ |
+| سير عمل الإصدار `44429001108` | ✅ نجح: فحص الموجز، بناء موقّع، إنشاء الريليز، مزامنة الموجز، ثم التحقق منه |
+| إصدار GitHub `focus-v0.27.0` | ✅ بعنوان «مُنظِّم 0.27.0» وأصل `MONAZZEM.apk` بحجم 8,596,966 بايت |
+| `/api/latest` بعد النشر | ✅ `35 / 0.27.0`، بالاسم «مُنظِّم» ورابط `MONAZZEM.apk` وملاحظات الإصدار |
+| نشر `update-site` | ✅ `dpl_B6KbfeYG36qUkQPHRDKzAHma5PQ3`، و`/admin/` و`/admin/messages?view=users` يعيدان 200 |
+| نشر QUBIXStore | ✅ `dpl_FpCdk2LKFB1pYLhB49enzct7nRSw` مع إعادة توجيه `qubixstore.vercel.app` إليه؛ صفحة التطبيق تعرض «تنزيل أحدث APK · 0.27.0 ↓» ولا تعرض 0.26.0 |
+| ربط لوحة المتجر بسجل المستخدمين | ✅ رابط «مستخدمو مُنظِّم» ظاهر في `qubixstore.vercel.app/admin`، وبطاقة المستخدمين وزر «مراسلة» ظاهران في `update-site/admin/messages` |
 | ظهور البانر والأذان على شاشة مقفلة (جهاز حقيقي) | ⏸ لا يوجد جهاز متصل بـ ADB في هذه الجلسة؛ التحقق بالبناء والمراجعة فقط |
 
 ## 0.26.0 — 18 نوفمبر 2026
