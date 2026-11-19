@@ -24,16 +24,13 @@ module.exports = async function messages(request, response) {
     const uid = String(request.query?.uid || "").trim().toLowerCase();
     const [all, sounds] = await Promise.all([readMessages(), readNotificationSounds()]);
     // A message addressed to one install ignores the audience and version rules: it is personal.
-    // It can carry the full install id or the four-four code the app shows, which is derived here
-    // from the id this request already sent — nothing extra is stored or asked for.
-    const myCode = uid ? userCode(uid) : "";
+    // The admin resolves the short code to the registered install id before storing it, so only the
+    // exact anonymous id this request sends can unlock the message — knowing the public code is not
+    // enough to read someone's messages. The stored code is for display in the dashboard only.
     const addressedToMe = (item) => {
       const wantedId = String(item.targetUserId || "").trim().toLowerCase();
-      const wantedCode = String(item.targetCode || "").trim().toUpperCase();
-      if (!wantedId && !wantedCode) return null;
-      if (!uid) return false;
-      if (wantedId && (uid === wantedId || (wantedId.length >= 8 && uid.startsWith(wantedId)))) return true;
-      return Boolean(wantedCode) && wantedCode === myCode;
+      if (!wantedId) return null;
+      return Boolean(uid) && uid === wantedId;
     };
     const messages = all.filter((item) => {
       const personal = addressedToMe(item);
@@ -45,7 +42,12 @@ module.exports = async function messages(request, response) {
       if (minVersion > 0 && version > 0 && version < minVersion) return false;
       return true;
     });
-    response.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=600");
+    // Personalised answers depend on uid and must never be stored in a shared cache; anonymous
+    // broadcasts stay cacheable, so the feed remains cheap without delaying targeted messages.
+    response.setHeader(
+      "Cache-Control",
+      uid ? "private, no-store" : "public, s-maxage=60, stale-while-revalidate=600"
+    );
     return response.status(200).json({ messages, sounds: sounds.sounds });
   } catch {
     return response.status(503).json({ error: "messages_unavailable" });

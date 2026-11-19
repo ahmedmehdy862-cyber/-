@@ -18,7 +18,7 @@
 
 The public app card and detail page are served by [QUBIXStore](https://qubixstore.vercel.app/focus-study-updates). QUBIXStore reads the current app description, version, release notes, and APK URL from `https://update-site-sigma.vercel.app/api/latest`; the Android app reads the same release record and opens the QUBIXStore page for update notices.
 
-The update-site `/admin/` panel is the single manual publishing point. It can upload a signed APK directly to Vercel Blob or accept a public HTTPS `.apk` URL, then publishes metadata for both clients. For tag-based automation, `.github/workflows/focus-study-release.yml` checks that `assembleRelease` can use a configured signing key, verifies the tag and that the new version is not older than the live feed (an equal code with the same name is allowed for re-runs) before creating the GitHub Release, builds a signed APK, posts new metadata to the same central feed, and verifies the feed afterwards. Use tags like `focus-v0.28.0` matching Gradle `versionName`, and always increase `versionCode`. Local `assembleRelease` without `~/.focusstudy/keystore.properties` fails unless `-PallowUnsignedRelease=true` is passed for experiments only.
+The update-site `/admin/` panel is the single manual publishing point. It can upload a signed APK directly to Vercel Blob or accept a public HTTPS `.apk` URL, then publishes metadata for both clients. For tag-based automation, `.github/workflows/focus-study-release.yml` checks that `assembleRelease` can use a configured signing key, verifies the tag and that the new version is not older than the live feed (an equal code with the same name is allowed for re-runs) before creating the GitHub Release, builds a signed APK, posts new metadata to the same central feed, and verifies the feed afterwards. Use tags like `focus-v0.29.0` matching Gradle `versionName`, and always increase `versionCode`. Local `assembleRelease` without `~/.focusstudy/keystore.properties` fails unless `-PallowUnsignedRelease=true` is passed for experiments only.
 
 GitHub repository secrets used by the workflow: `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD`, and `FOCUS_RELEASE_SYNC_TOKEN`. The central Vercel project needs `BLOB_READ_WRITE_TOKEN`, `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET`, and `FOCUS_RELEASE_SYNC_TOKEN`. Keep the signing key consistent with the APK already distributed so Android can install upgrades over the current app and retain its data.
 
@@ -28,7 +28,7 @@ git commit -m "Connect MONAZZEM releases to QUBIXStore"
 git push origin main
 ```
 
-For each future release, first update `versionCode` and `versionName`, commit those changes, then create and push the matching tag, for example `git tag focus-v0.28.0; git push origin focus-v0.28.0`. GitHub Actions preflights the live feed, publishes the signed APK, and automatically refreshes and verifies the central feed; QUBIXStore and MONAZZEM read the new version without another store code edit.
+For each future release, first update `versionCode` and `versionName`, commit those changes, then create and push the matching tag, for example `git tag focus-v0.29.0; git push origin focus-v0.29.0`. GitHub Actions preflights the live feed, publishes the signed APK, and automatically refreshes and verifies the central feed; QUBIXStore and MONAZZEM read the new version without another store code edit.
 
 تطبيق أندرويد أصلي يجمع **تنظيم المهام والوقت** مع **حجب التطبيقات فعليًا** أثناء جلسة التركيز، وليس مجرد قطع الإنترنت.
 

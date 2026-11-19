@@ -47,13 +47,16 @@ function readLocalJson(blobPath, fallback) {
   }
 }
 
-async function readJson(blobPath, fallback, access = MESSAGES_ACCESS) {
+async function readJson(blobPath, fallback, access = MESSAGES_ACCESS, strict = false) {
   if (process.env.BLOB_READ_WRITE_TOKEN) {
     try {
       const record = await readBlobJson(blobPath, access);
       if (record) return record;
     } catch (error) {
       console.error("blob read failed", blobPath, error?.message || "unknown");
+      // Private stores must never fall back to an empty local file after a failed read: the next
+      // write would overwrite the real registry or the saved sound choices with that empty copy.
+      if (strict) throw new Error("private_store_unavailable");
     }
   }
   return readLocalJson(blobPath, fallback);
@@ -79,6 +82,7 @@ async function readInboxJson() {
       }
     } catch (error) {
       console.error("private inbox read failed", error?.message || "unknown");
+      throw new Error("private_inbox_unavailable");
     }
   }
   return readLocalJson(INBOX_PATH, { items: [] });
@@ -139,12 +143,12 @@ async function markSupport(id, status) {
 }
 
 async function readUsers() {
-  const record = await readJson(USERS_PATH, { users: [] }, USERS_ACCESS);
+  const record = await readJson(USERS_PATH, { users: [] }, USERS_ACCESS, true);
   return Array.isArray(record.users) ? record.users : [];
 }
 
 async function readNotificationSounds() {
-  const record = await readJson(SOUNDS_PATH, { sounds: DEFAULT_SOUNDS, updatedAt: "" }, SOUNDS_ACCESS);
+  const record = await readJson(SOUNDS_PATH, { sounds: DEFAULT_SOUNDS, updatedAt: "" }, SOUNDS_ACCESS, true);
   return { sounds: normalizeSounds(record.sounds), updatedAt: String(record.updatedAt || "") };
 }
 

@@ -509,13 +509,18 @@ private fun AppRoot(
         }
     }
     LaunchedEffect(Unit) {
-        withContext(Dispatchers.IO) { runCatching { TeamMessages.checkForNew(context) } }
+        withContext(Dispatchers.IO) {
+            runCatching { TeamMessages.checkForNew(context) }
+            // A first launch without a connection must try again on the next open.
+            runCatching { UserRegistry.register(context) }
+        }
     }
 
-    // First launch and every later name change introduce the user to the admin dashboard.
+    // First launch and every later name/profile change introduce the user to the admin dashboard.
+    // `force` skips the retry throttle so a corrected name reaches the panel immediately.
     // The request is fire-and-forget: offline users keep using the app normally.
     LaunchedEffect(preferences.studentName, preferences.profile) {
-        withContext(Dispatchers.IO) { UserRegistry.register(context) }
+        withContext(Dispatchers.IO) { UserRegistry.register(context, force = true) }
     }
 
     LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
@@ -673,6 +678,7 @@ private fun AppRoot(
                 "subjects" -> SubjectsScreen(onBack = { returnToPreviousTab() })
                 "task_types" -> TaskTypesScreen(onBack = { returnToPreviousTab() })
                 "skills" -> SkillsScreen(onBack = { returnToPreviousTab() })
+                "notes" -> NotesScreen(onBack = { returnToPreviousTab() })
                 "bottom_bar" -> BottomBarSettingsScreen(
                     selected = preferences.bottomTabs,
                     onBack = { returnToPreviousTab() },
@@ -702,6 +708,7 @@ private fun AppRoot(
                     onPrayerTimes = { openSecondary("prayer_times") },
                     onTaskTypes = { openSecondary("task_types") },
                     onSkills = { openSecondary("skills") },
+                    onNotes = { openSecondary("notes") },
                     onMessages = { openSecondary("messages") },
                     onGoals = { openSecondary("goals") },
                     onBottomBar = { openSecondary("bottom_bar") },
@@ -1396,6 +1403,7 @@ private fun MoreSectionsScreen(
     onPrayerTimes: () -> Unit,
     onTaskTypes: () -> Unit,
     onSkills: () -> Unit,
+    onNotes: () -> Unit,
     onMessages: () -> Unit,
     onGoals: () -> Unit,
     onBottomBar: () -> Unit,
@@ -1418,6 +1426,7 @@ private fun MoreSectionsScreen(
             listOf(
                 MoreItem("الخطة الأسبوعية", "حوّل مهامك إلى جلسات قابلة للتنفيذ.", "↗", onPlanner),
                 MoreItem("أنواع المهام", "أضف أنواعك المخصّصة، وأعد ترتيبها أو أرشفها.", "◈", onTaskTypes),
+                MoreItem("نوتة", "ملاحظاتك الخاصة — محفوظة على جهازك فقط.", "✎", onNotes),
                 MoreItem("إحصاءاتي", "راجع وقت التركيز والمهام المنجزة.", "◔", onAnalytics)
             )
         )

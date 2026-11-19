@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.sp
 internal data class SectionGroup(val title: String, val ids: List<String>)
 
 internal val SectionGroups = listOf(
-    SectionGroup("التخطيط", listOf("today", "tasks", "calendar", "planner", "task_types")),
+    SectionGroup("التخطيط", listOf("today", "tasks", "calendar", "notes", "planner", "task_types")),
     SectionGroup("التطوّر", listOf("goals", "skills", "subjects", "analytics")),
     SectionGroup("الفريق والنظام", listOf("notifications", "messages", "updates", "prayer_times", "settings", "support"))
 )

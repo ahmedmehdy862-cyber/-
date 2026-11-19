@@ -23,6 +23,7 @@ data class SessionRow(
  *        sessions(id, task_id, started_at, ends_at, blocked_packages, state)
  *   v2 — rich task fields (description, category, priority, status, dates, notes, recurrence,
  *        subject, sort_order, completed_at) and the subtasks table.
+ *   v14 — notes(id, title, body, category, pinned, created_at, updated_at) for the private «نوتة».
  *
  * Every upgrade is additive: no column or table is dropped, so existing data survives.
  */
@@ -69,6 +70,7 @@ class StudyDb private constructor(context: Context) :
         migrateToV11(db)
         migrateToV12(db)
         migrateToV13(db)
+        migrateToV14(db)
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
@@ -84,6 +86,7 @@ class StudyDb private constructor(context: Context) :
         if (oldVersion < 11) migrateToV11(db)
         if (oldVersion < 12) migrateToV12(db)
         if (oldVersion < 13) migrateToV13(db)
+        if (oldVersion < 14) migrateToV14(db)
     }
 
     private fun migrateToV4(db: SQLiteDatabase) {
@@ -357,6 +360,69 @@ class StudyDb private constructor(context: Context) :
         writableDatabase.delete("skills", "id = ?", arrayOf(skillId.toString()))
     }
 
+    // --- Notebook «نوتة» ---------------------------------------------------------------
+    // Notes are stored only here, in the app's private SQLite file. No method in this class
+    // sends them anywhere, and the notebook repository performs no network calls.
+
+    fun notes(): List<Note> = readableDatabase.rawQuery(
+        "SELECT id, title, body, category, pinned, created_at, updated_at FROM notes " +
+            "ORDER BY pinned DESC, updated_at DESC",
+        null
+    ).use { cursor ->
+        buildList {
+            while (cursor.moveToNext()) {
+                add(
+                    Note(
+                        id = cursor.getLong(0),
+                        title = cursor.getString(1).orEmpty(),
+                        body = cursor.getString(2).orEmpty(),
+                        category = cursor.getString(3).orEmpty(),
+                        pinned = cursor.getInt(4) == 1,
+                        createdAt = cursor.getLong(5),
+                        updatedAt = cursor.getLong(6)
+                    )
+                )
+            }
+        }
+    }
+
+    fun addNote(title: String, body: String, category: String): Long {
+        require(body.isNotBlank() || title.isNotBlank()) { "الملاحظة فارغة" }
+        val now = System.currentTimeMillis()
+        val values = ContentValues().apply {
+            put("title", NotesText.title(title))
+            put("body", NotesText.body(body))
+            put("category", NotesText.category(category))
+            put("pinned", 0)
+            put("created_at", now)
+            put("updated_at", now)
+        }
+        return writableDatabase.insert("notes", null, values)
+    }
+
+    fun updateNote(id: Long, title: String, body: String, category: String) {
+        require(body.isNotBlank() || title.isNotBlank()) { "الملاحظة فارغة" }
+        val values = ContentValues().apply {
+            put("title", NotesText.title(title))
+            put("body", NotesText.body(body))
+            put("category", NotesText.category(category))
+            put("updated_at", System.currentTimeMillis())
+        }
+        writableDatabase.update("notes", values, "id = ?", arrayOf(id.toString()))
+    }
+
+    fun setNotePinned(id: Long, pinned: Boolean) {
+        val values = ContentValues().apply {
+            put("pinned", if (pinned) 1 else 0)
+            put("updated_at", System.currentTimeMillis())
+        }
+        writableDatabase.update("notes", values, "id = ?", arrayOf(id.toString()))
+    }
+
+    fun deleteNote(id: Long) {
+        writableDatabase.delete("notes", "id = ?", arrayOf(id.toString()))
+    }
+
     fun taskTypes(includeArchived: Boolean = false): List<TaskType> {
         val rows = ArrayList<TaskType>()
         val where = if (includeArchived) "" else "WHERE archived = 0"
@@ -512,6 +578,24 @@ class StudyDb private constructor(context: Context) :
         )
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_goal_links_goal ON goal_links(goal_id, kind)")
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_goal_links_ref ON goal_links(kind, ref_id)")
+    }
+
+    /** v14 — the private notebook «نوتة». Additive: every existing table is left untouched. */
+    private fun migrateToV14(db: SQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS notes(
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              title TEXT NOT NULL DEFAULT '',
+              body TEXT NOT NULL DEFAULT '',
+              category TEXT NOT NULL DEFAULT '',
+              pinned INTEGER NOT NULL DEFAULT 0,
+              created_at INTEGER NOT NULL,
+              updated_at INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+        db.execSQL("CREATE INDEX IF NOT EXISTS idx_notes_order ON notes(pinned DESC, updated_at DESC)")
     }
 
     /** v11 — skills the person is developing, independent of tasks and sessions. */
@@ -1375,7 +1459,7 @@ class StudyDb private constructor(context: Context) :
 
     companion object {
         private const val DB_NAME = "focus_study.db"
-        private const val DB_VERSION = 13
+        private const val DB_VERSION = 14
         private const val STATE_ACTIVE = "active"
         private const val SEPARATOR = "\n"
 

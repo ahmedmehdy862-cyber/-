@@ -1,10 +1,10 @@
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 36,
-  "versionName": "0.28.0",
+  "versionCode": 37,
+  "versionName": "0.29.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.28.0/MONAZZEM.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.29.0/MONAZZEM.apk",
   "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "أذكار صباح ومساء وبعد الظهر وقبل النوم في أوقاتها، واختيار صوت مستقل لكل نوع إشعار من لوحة الإدارة، واستخدام ملف الآذان.mp3 المضمّن في التطبيق."
+  "releaseNotes": "نوتة خاصة للملاحظات محفوظة على جهازك فقط، ووصول موثوق لاسمك إلى لوحة الإدارة حتى مع انقطاع أول اتصال، ورسائل موجّهة لا يقرأها إلا الجهاز المقصود."
 }

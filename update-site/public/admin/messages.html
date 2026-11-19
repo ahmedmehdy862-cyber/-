@@ -51,6 +51,7 @@
   </div>
 
   <div id="panel" hidden>
+    <div id="panel-status" class="meta" hidden></div>
     <div class="card">
       <strong>بث رسالة فورية لكل المستخدمين</strong>
       <p class="meta">تظهر داخل التطبيق عند أول فتح بعد النشر — بدون تحديث من المتجر.</p>
@@ -70,8 +71,9 @@
         <input id="min-version" type="number" min="0" max="1000000" value="0" style="max-width:130px">
       </div>
       <div class="row">
-        <label class="meta" for="target-user">لمستخدم بعينه — اكتب رمزه</label>
-        <input id="target-user" maxlength="64" placeholder="مثال: AB12-CD34 (اختره من جدول المستخدمين أو من داخل التطبيق)">
+        <label class="meta" for="target-user">لجهاز بعينه — اكتب رمزه</label>
+        <input id="target-user" maxlength="64" placeholder="مثال: AB12-CD34 — اضغط «مراسلة» في جدول المستخدمين">
+        <div class="meta">الرسالة الموجّهة تصل إلى هذا التثبيت فقط؛ يُتجاهل معها «لمن؟» و«من إصدار»، ويُحلَّل الرمز إلى معرّف الجهاز داخل الخادم.</div>
       </div>
       <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
     </div>
@@ -121,6 +123,11 @@
   const api = (path, options = {}) => fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
   const esc = (value) => String(value || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const when = (value) => esc(String(value || "").slice(0, 16).replace("T", " · "));
+  // Same shape as the code shown in the app: first eight alphanumerics, split 4-4.
+  const formatCode = (value) => {
+    const clean = String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8).toUpperCase();
+    return clean.length === 8 ? `${clean.slice(0, 4)}-${clean.slice(4)}` : clean;
+  };
   const profileLabels = { student: "طالب", graduate: "خريج", professional: "موظف", retired: "متقاعد", general: "عام" };
   const soundLabels = {
     prayer: "الأذان", task: "المهام", exam: "الامتحانات", team: "رسائل الفريق",
@@ -198,30 +205,45 @@
       <div class="item">
         <div><strong>${esc(item.name || "بدون اسم")}</strong> <span class="${item.status === "new" ? "new" : "handled"}">${item.status === "new" ? "جديدة" : "تمّت"}</span>
           <div>${esc(item.body)}</div>
-          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${when(item.at)} · نسخة ${esc(item.version || "?")}${item.uid ? ` · رمز <button class="link" data-code="${esc(String(item.uid).slice(0, 8).toUpperCase())}">${esc(String(item.uid).slice(0, 8).toUpperCase())}</button>` : ""}</div></div>
+          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${when(item.at)} · نسخة ${esc(item.version || "?")}${item.uid ? ` · رمز <button class="link" data-code="${esc(formatCode(item.uid))}">${esc(formatCode(item.uid))}</button>` : ""}</div></div>
         <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
       </div>`).join("");
   }
 
   async function load() {
-    const [messages, inbox, people, soundConfig] = await Promise.all([
-      api("/api/admin/messages"),
-      api("/api/admin/messages?view=inbox"),
-      api("/api/admin/messages?view=users"),
-      api("/api/admin/messages?view=sounds")
-    ]);
-    if ([messages, inbox, people, soundConfig].some((response) => response.status === 401)) {
+    const status = document.getElementById("panel-status");
+    let responses;
+    try {
+      responses = await Promise.all([
+        api("/api/admin/messages"),
+        api("/api/admin/messages?view=inbox"),
+        api("/api/admin/messages?view=users"),
+        api("/api/admin/messages?view=sounds")
+      ]);
+    } catch {
+      status.hidden = false;
+      status.textContent = "تعذّر الاتصال بالخادم. حاول التحديث لاحقًا.";
+      document.getElementById("login-card").hidden = true;
+      document.getElementById("panel").hidden = false;
+      return;
+    }
+    const [messages, inbox, people, soundConfig] = responses;
+    if (responses.some((response) => response.status === 401)) {
       document.getElementById("login-card").hidden = false;
       document.getElementById("panel").hidden = true;
       return;
     }
     document.getElementById("login-card").hidden = true;
     document.getElementById("panel").hidden = false;
-    renderMessages((await messages.json()).messages || []);
-    renderInbox((await inbox.json()).items || []);
-    users = (await people.json()).users || [];
+    const broken = responses.filter((response) => !response.ok).length;
+    status.hidden = broken === 0;
+    status.textContent = broken ? "تعذّر تحميل بعض البيانات من الخادم. حاول التحديث لاحقًا." : "";
+    const bodyOf = async (response) => (response.ok ? response.json().catch(() => ({})) : {});
+    renderMessages((await bodyOf(messages)).messages || []);
+    renderInbox((await bodyOf(inbox)).items || []);
+    if (people.ok) users = (await bodyOf(people)).users || [];
     renderUsers();
-    if (soundConfig.ok) renderSounds((await soundConfig.json()).sounds || {});
+    if (soundConfig.ok) renderSounds((await bodyOf(soundConfig)).sounds || {});
   }
 
   // Delegation is registered once so repeated refreshes never stack listeners.
@@ -262,8 +284,21 @@
     const minVersionCode = Number(document.getElementById("min-version").value || 0);
     const targetRef = document.getElementById("target-user").value.trim();
     const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ title, body, audienceProfile, minVersionCode, targetRef }) });
-    status.textContent = res.ok ? "نُشرت الرسالة." : "تعذر النشر.";
-    if (res.ok) { document.getElementById("title").value = ""; document.getElementById("body").value = ""; load(); }
+    if (!res.ok) {
+      const detail = await res.json().catch(() => ({}));
+      status.textContent = detail.error === "target_user_not_found"
+        ? "الرمز غير مسجّل. اختر رمزًا من جدول المستخدمين."
+        : detail.error === "invalid_target_user" ? "الرمز غير صالح." : "تعذر النشر.";
+      return;
+    }
+    status.textContent = "نُشرت الرسالة.";
+    document.getElementById("title").value = "";
+    document.getElementById("body").value = "";
+    // Never keep a previous target/filter: the next broadcast must not silently stay personal.
+    document.getElementById("target-user").value = "";
+    document.getElementById("audience").value = "";
+    document.getElementById("min-version").value = "0";
+    load();
   });
 
   document.getElementById("refresh").addEventListener("click", load);

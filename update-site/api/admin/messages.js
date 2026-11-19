@@ -3,7 +3,7 @@ const {
   readMessages, appendMessage, removeMessage, readInbox, markSupport, readUsers,
   readNotificationSounds, writeNotificationSounds
 } = require("../../lib/messaging-store");
-const { normalizeUserCode } = require("../../lib/user-code");
+const { normalizeUserCode, userCode } = require("../../lib/user-code");
 
 /** Admin: publish an instant message to every app, or delete one. */
 module.exports = async function adminMessages(req, res) {
@@ -44,15 +44,26 @@ module.exports = async function adminMessages(req, res) {
       String(body.audienceProfile || "")
     ) ? String(body.audienceProfile || "") : "";
     const minVersionCode = Math.max(0, Math.min(1_000_000, Number(body.minVersionCode || 0) || 0));
-    // The dashboard can paste either the short code people read out (AB12-CD34) or a full id.
+    // The dashboard can paste the short code people read out (AB12-CD34) or a full install id.
+    // The code is public and shareable, so resolve it to the registered id here and store only that
+    // id as the delivery address; the code kept on the message is a label for this dashboard.
     const rawRef = String(body.targetRef || body.targetUserId || "").trim();
     let targetUserId = "";
     let targetCode = "";
     if (rawRef) {
-      targetCode = normalizeUserCode(rawRef);
-      if (!targetCode) {
+      const pastedCode = normalizeUserCode(rawRef);
+      if (pastedCode) {
+        const people = await readUsers();
+        const found = people.find((person) =>
+          String(person.code || userCode(String(person.id || ""))).toUpperCase() === pastedCode
+        );
+        if (!found) return json(res, 404, { error: "target_user_not_found" });
+        targetUserId = String(found.id).toLowerCase();
+        targetCode = pastedCode;
+      } else {
         if (!/^[a-z0-9-]{6,64}$/i.test(rawRef)) return json(res, 400, { error: "invalid_target_user" });
         targetUserId = rawRef.toLowerCase();
+        targetCode = userCode(targetUserId);
       }
     }
     if (title.length < 3 || text.length < 3) return json(res, 400, { error: "title_and_body_required" });

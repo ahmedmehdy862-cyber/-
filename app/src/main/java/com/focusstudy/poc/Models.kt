@@ -125,6 +125,22 @@ data class StudyEvent(
     val notes: String = ""
 )
 
+/**
+ * A private note in the in-app notebook «نوتة».
+ *
+ * Notes never leave the device: there is no network call anywhere in their repository, and no
+ * field is copied into the user-registration or support payloads.
+ */
+data class Note(
+    val id: Long = 0L,
+    val title: String = "",
+    val body: String = "",
+    val category: String = "",
+    val pinned: Boolean = false,
+    val createdAt: Long = 0L,
+    val updatedAt: Long = 0L
+)
+
 /** A skill the person is deliberately developing, with practice time and a level they set. */
 data class Skill(
     val id: Long,

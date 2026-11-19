@@ -9,24 +9,24 @@
 ```json
 {
   "packageName": "com.focusstudy.poc",
-  "versionCode": 36,
-  "versionName": "0.28.0",
+  "versionCode": 37,
+  "versionName": "0.29.0",
   "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.28.0/MONAZZEM.apk",
+  "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.29.0/MONAZZEM.apk",
   "app": {
     "id": "focus-study",
     "name": "مُنظِّم",
     "category": "تعليم",
     "developer": "مُنظِّم",
     "description": "نظّم مهامك وموادك وجلسات تركيزك وخطتك الدراسية في مساحة واحدة.",
-    "versionCode": 36,
-    "versionName": "0.28.0",
-    "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.28.0/MONAZZEM.apk",
+    "versionCode": 37,
+    "versionName": "0.29.0",
+    "apkUrl": "https://github.com/ahmedmehdy862-cyber/MONAZZEM/releases/download/focus-v0.29.0/MONAZZEM.apk",
     "storeUrl": "https://qubixstore.vercel.app/focus-study-updates",
-    "releaseNotes": "أذكار صباح ومساء وبعد الظهر وقبل النوم في أوقاتها، واختيار صوت مستقل لكل نوع إشعار من لوحة الإدارة، واستخدام ملف الآذان.mp3 المضمّن في التطبيق."
+    "releaseNotes": "نوتة خاصة للملاحظات محفوظة على جهازك فقط، ووصول موثوق لاسمك إلى لوحة الإدارة حتى مع انقطاع أول اتصال، ورسائل موجّهة لا يقرأها إلا الجهاز المقصود."
   },
   "releasePageUrl": "https://update-site-sigma.vercel.app/#download",
-  "releaseNotes": "أذكار صباح ومساء وبعد الظهر وقبل النوم في أوقاتها، واختيار صوت مستقل لكل نوع إشعار من لوحة الإدارة، واستخدام ملف الآذان.mp3 المضمّن في التطبيق."
+  "releaseNotes": "نوتة خاصة للملاحظات محفوظة على جهازك فقط، ووصول موثوق لاسمك إلى لوحة الإدارة حتى مع انقطاع أول اتصال، ورسائل موجّهة لا يقرأها إلا الجهاز المقصود."
 }
 ```
 
@@ -48,7 +48,7 @@
 
 ## النشر الآلي بالوسم (tag)
 
-للنشر الآلي، ارفع `versionName` و`versionCode` في `app/build.gradle.kts`، ثم ادفع وسمًا مثل `focus-v0.28.0` يطابق `versionName` تمامًا. سير العمل في `.github/workflows/focus-study-release.yml` ينفّذ الترتيب التالي:
+للنشر الآلي، ارفع `versionName` و`versionCode` في `app/build.gradle.kts`، ثم ادفع وسمًا مثل `focus-v0.29.0` يطابق `versionName` تمامًا. سير العمل في `.github/workflows/focus-study-release.yml` ينفّذ الترتيب التالي:
 
 1. يتحقق من أن حزمة لوحة الإدارة `app.bundle.js` محدَّثة (`node build-admin.cjs` ثم `git diff --exit-code`).
 2. يتحقق من تطابق الوسم مع `versionName`، ثم من أن الإصدار الجديد **ليس أقدم** من `feed.versionCode` في `/api/latest` — أي أن الأكبر مقبول، والمساوي مقبول فقط إذا كان `versionName` نفسه (لإعادة تشغيل الوسم) — وأن `FOCUS_RELEASE_SYNC_TOKEN` غير فارغ. لا يوجد endpoint للتحقق الآمن في واجهة المزامنة، لذلك لا يُرسل أي POST في هذه المرحلة.
