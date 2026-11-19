@@ -37,7 +37,7 @@ vercel deploy --prod
 
 The admin credential hash and support inbox are written with `access: "private"` in Vercel Blob and read server-side with `BLOB_READ_WRITE_TOKEN`; the public feed and broadcast messages remain public. Records written to the public host by older versions are copied to the private host on the first read and their public copies are deleted. The admin account uses the production environment variables `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and `ADMIN_SESSION_SECRET`. Keep these private. The first store URL must be saved through the admin panel before publishing a newer version. Installing from a store preserves app data only when the store listing uses the same package ID and a compatible signing certificate.
 
-The current release is `0.27.0` (`versionCode` 35). The app icon and website mark use the same shield and bolt geometry as the in-app logo. The app's signing key is private and must remain consistent with the signing configuration used by the connected store. `/admin/messages` also shows a private registry of users introduced automatically by the app, with a one-click button to address any of them by code.
+The current release is `0.28.0` (`versionCode` 36). The app icon and website mark use the same shield and bolt geometry as the in-app logo. The app's signing key is private and must remain consistent with the signing configuration used by the connected store. `/admin/messages` also shows a private registry of users introduced automatically by the app, with a one-click button to address any of them by code, and a card that chooses a separate sound for each notification type.
 
 ## Post-deploy smoke test
 

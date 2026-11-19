@@ -95,6 +95,9 @@
             android:name=".PrayerReminderReceiver"
             android:exported="false" />
         <receiver
+            android:name=".DhikrReminderReceiver"
+            android:exported="false" />
+        <receiver
             android:name=".ReminderReceiver"
             android:exported="false" />
 

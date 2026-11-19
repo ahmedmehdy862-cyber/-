@@ -1,12 +1,11 @@
 # Third-party audio
 
-## Adhan (`app/src/main/res/raw/adhan.ogg`)
+## Adhan (`app/src/main/res/raw/adhan_local.mp3`)
 
-- Source: <https://commons.wikimedia.org/wiki/File:Adhan.ogg>
-- Direct file: <https://upload.wikimedia.org/wikipedia/commons/e/e7/Adhan.ogg>
-- Author: Aishatu98 (Wikimedia Commons)
-- License: [CC0 1.0 Universal Public Domain Dedication](https://creativecommons.org/publicdomain/zero/1.0/)
-- Notes: 42-second adhan announcing that prayer time has started. Stored locally in the app; no network request is made to play it.
+- Source: user-provided recording `الآذان.mp3` from the local Desktop, copied into the app for this release at the user's request.
+- File details: MP3, 473,107 bytes, about 204.8 seconds, mono, 16 kHz. The source also contains cover art; it is stored unchanged so the requested sound is used byte-for-byte.
+- Licence: supplied by the app owner for use inside this app; no external CC licence is claimed for this recording.
+- Notes: played locally from the APK for prayer alerts when the admin chooses the default/app adhan sound. No network request is made to play it. The older Wikimedia `adhan.ogg` was removed from this release.
 
 ## Notification chime (`app/src/main/res/raw/notification_chime.wav`)
 

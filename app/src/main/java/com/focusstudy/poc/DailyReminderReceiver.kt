@@ -273,6 +273,8 @@ class FocusBootReceiver : BroadcastReceiver() {
                     .onFailure { Log.w(TAG, "reminder refresh failed", it) }
                 runCatching { PrayerReminderScheduler.schedule(app) }
                     .onFailure { Log.w(TAG, "prayer schedule failed", it) }
+                runCatching { DhikrReminderScheduler.schedule(app) }
+                    .onFailure { Log.w(TAG, "dhikr schedule failed", it) }
                 runCatching { AppUpdateManager.schedule(app) }
                 runCatching { ReminderRescheduleJob.schedule(app) }
                     .onFailure { Log.w(TAG, "update check failed", it) }

@@ -61,13 +61,14 @@ object TeamMessages {
         val profile = FocusPreferences.load(context).profile.key
         val query = "?profile=$profile&version=${versionCode(context)}&uid=${UserIdentity.id(context)}"
         val remote = runCatching { request("$BASE/api/messages$query", "GET", null) }.getOrNull()
-        val messages = remote?.let { parseMessages(it) }.orEmpty()
-        if (messages.isNotEmpty()) {
+        if (!remote.isNullOrBlank()) {
+            // The same response carries broadcast messages and the admin's sound choices. Cache the
+            // whole thing so a receiver can use the latest sound even with no network connection.
             prefs(context).edit().putString(CACHE, remote).apply()
-            messages
-        } else {
-            parseMessages(prefs(context).getString(CACHE, "").orEmpty())
+            NotificationSounds.cache(context, remote)
         }
+        val raw = if (!remote.isNullOrBlank()) remote else prefs(context).getString(CACHE, "").orEmpty()
+        parseMessages(raw)
     }
 
     fun cached(context: Context): List<TeamMessage> =

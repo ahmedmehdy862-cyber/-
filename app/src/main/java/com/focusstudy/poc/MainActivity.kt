@@ -496,7 +496,10 @@ private fun AppRoot(
     ) {
         StudyNotificationScheduler.update(context, preferences)
     }
-    LaunchedEffect(Unit) { PrayerReminderScheduler.schedule(context) }
+    LaunchedEffect(Unit) {
+        PrayerReminderScheduler.schedule(context)
+        DhikrReminderScheduler.schedule(context)
+    }
 
     // Keep the local consent ledger current even if the user never opens the session setup.
     LaunchedEffect(Unit) { withContext(Dispatchers.IO) { runCatching { ConsentStore.record(context) } } }

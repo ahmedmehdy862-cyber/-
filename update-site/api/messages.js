@@ -1,4 +1,4 @@
-const { readMessages, upsertUser } = require("../lib/messaging-store");
+const { readMessages, upsertUser, readNotificationSounds } = require("../lib/messaging-store");
 const { userCode } = require("../lib/user-code");
 const { parseBody } = require("../lib/admin-auth");
 
@@ -22,7 +22,7 @@ module.exports = async function messages(request, response) {
     const profile = String(request.query?.profile || "").trim();
     const version = Number(request.query?.version || 0);
     const uid = String(request.query?.uid || "").trim().toLowerCase();
-    const all = await readMessages();
+    const [all, sounds] = await Promise.all([readMessages(), readNotificationSounds()]);
     // A message addressed to one install ignores the audience and version rules: it is personal.
     // It can carry the full install id or the four-four code the app shows, which is derived here
     // from the id this request already sent — nothing extra is stored or asked for.
@@ -46,7 +46,7 @@ module.exports = async function messages(request, response) {
       return true;
     });
     response.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=600");
-    return response.status(200).json({ messages });
+    return response.status(200).json({ messages, sounds: sounds.sounds });
   } catch {
     return response.status(503).json({ error: "messages_unavailable" });
   }

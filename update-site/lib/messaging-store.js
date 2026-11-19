@@ -5,13 +5,30 @@ const { userCode } = require("./user-code");
 const MESSAGES_PATH = "focus-study/team-messages.json";
 const INBOX_PATH = "focus-study/support-inbox.json";
 const USERS_PATH = "focus-study/users.json";
+const SOUNDS_PATH = "focus-study/notification-sounds.json";
 const LOCAL_DIR = path.join(__dirname, "..", ".data");
-// Broadcast messages are public; the support inbox and user registry hold user-submitted details
-// and are read/written only through the server-side @vercel/blob client with BLOB_READ_WRITE_TOKEN.
+// Broadcast messages are public; the support inbox, user registry and sound choices are
+// read/written only through the server-side @vercel/blob client with BLOB_READ_WRITE_TOKEN.
 const MESSAGES_ACCESS = "public";
 const INBOX_ACCESS = "private";
 const USERS_ACCESS = "private";
+const SOUNDS_ACCESS = "private";
 const MAX_USERS = 1000;
+
+const SOUND_CATEGORIES = ["prayer", "task", "exam", "team", "update", "daily", "dhikr"];
+const SOUND_CHOICES = ["default", "chime", "adhan", "system", "silent"];
+const DEFAULT_SOUNDS = Object.fromEntries(SOUND_CATEGORIES.map((key) => [key, "default"]));
+
+/** Keeps only known notification types and known sound ids, so a bad payload cannot change behaviour. */
+function normalizeSounds(input) {
+  const result = { ...DEFAULT_SOUNDS };
+  if (!input || typeof input !== "object" || Array.isArray(input)) return result;
+  for (const key of SOUND_CATEGORIES) {
+    const value = String(input[key] || "").trim().toLowerCase();
+    if (SOUND_CHOICES.includes(value)) result[key] = value;
+  }
+  return result;
+}
 
 async function readBlobJson(blobPath, access) {
   const { get } = await import("@vercel/blob");
@@ -126,6 +143,18 @@ async function readUsers() {
   return Array.isArray(record.users) ? record.users : [];
 }
 
+async function readNotificationSounds() {
+  const record = await readJson(SOUNDS_PATH, { sounds: DEFAULT_SOUNDS, updatedAt: "" }, SOUNDS_ACCESS);
+  return { sounds: normalizeSounds(record.sounds), updatedAt: String(record.updatedAt || "") };
+}
+
+async function writeNotificationSounds(input) {
+  const sounds = normalizeSounds(input);
+  const updatedAt = new Date().toISOString();
+  await writeJson(SOUNDS_PATH, { sounds, updatedAt }, SOUNDS_ACCESS);
+  return { sounds, updatedAt };
+}
+
 /** Upsert by anonymous install id, keeping the original first-seen timestamp. */
 async function upsertUser(entry) {
   const users = await readUsers();
@@ -143,5 +172,6 @@ async function upsertUser(entry) {
 
 module.exports = {
   readMessages, appendMessage, removeMessage, readInbox, appendSupport, markSupport,
-  readUsers, upsertUser,
+  readUsers, upsertUser, readNotificationSounds, writeNotificationSounds,
+  normalizeSounds, SOUND_CATEGORIES, SOUND_CHOICES, DEFAULT_SOUNDS,
 };

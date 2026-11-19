@@ -73,6 +73,7 @@ internal fun PrayerTimesScreen(onBack: () -> Unit) {
     var longitude by rememberSaveable { mutableStateOf(if (PrayerPrefs.longitude(context).isFinite()) coordinateText(PrayerPrefs.longitude(context)) else "") }
     var method by rememberSaveable { mutableStateOf(PrayerPrefs.method(context)) }
     var enabled by rememberSaveable { mutableStateOf(PrayerPrefs.enabled(context)) }
+    var dhikrEnabled by rememberSaveable { mutableStateOf(DhikrPrefs.enabled(context)) }
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     val locationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -186,6 +187,31 @@ internal fun PrayerTimesScreen(onBack: () -> Unit) {
                         ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                         else PrayerReminderScheduler.notifyTest(context)
                     }) { Text("جرّب صوت الأذان وظهور التنبيه") }
+                }
+            }
+            item {
+                PreferenceCard("تذكيرات الأذكار", "أربع وقفات قصيرة: بعد الفجر والظهر والمغرب والعشاء، أو في ٧:٠٠ و١٢:٣٠ و٦:٠٠ و٩:٣٠ إن لم يكن موقع محفوظ.") {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(checked = dhikrEnabled, onCheckedChange = { checked ->
+                            dhikrEnabled = checked
+                            DhikrPrefs.setEnabled(context, checked)
+                            DhikrReminderScheduler.schedule(context)
+                        })
+                        Text("فعّل تذكيرات الأذكار", color = FocusColors.TextPrimary)
+                    }
+                    Text(
+                        "النصوص قصيرة ومحفوظة داخل التطبيق، والصوت يخضع لاختيار الإدارة لكل نوع إشعار. لا تُرسل الأذكار ولا أوقاتها إلى أي خادم.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FocusColors.TextSecondary
+                    )
+                    TextButton(onClick = {
+                        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                            androidx.core.content.ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        else DhikrReminderScheduler.notifyTest(context)
+                    }) { Text("جرّب تذكير الأذكار") }
                 }
             }
         }

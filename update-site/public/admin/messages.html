@@ -27,7 +27,10 @@
     th{color:var(--muted);font-size:12px;font-weight:600}tbody tr:last-child td{border-bottom:0}
     .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.4px;color:#9ce8dc}
     .pill{display:inline-block;padding:2px 9px;border-radius:999px;background:#16b8a61c;color:#9ce8dc;font-size:12px}
-    @media(max-width:640px){.wrap{width:calc(100% - 20px);padding-top:14px}.card{padding:13px}.row > *{width:100%}}
+    .sound-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 18px;margin-top:10px}
+    .sound-grid label{display:block;font-size:14px;font-weight:600}
+    .sound-grid select{margin-top:4px}
+    @media(max-width:640px){.wrap{width:calc(100% - 20px);padding-top:14px}.card{padding:13px}.row > *{width:100%}.sound-grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
@@ -85,6 +88,24 @@
       </table></div>
     </div>
 
+    <div class="card" id="sounds-card">
+      <div class="row" style="justify-content:space-between">
+        <div><strong>أصوات الإشعارات</strong><div class="meta">لكل نوع إشعار صوته المستقل. يُحدَّث في التطبيق عند أول فتح بعد الحفظ، ويُحفظ آخر اختيار على الجهاز للعمل دون إنترنت.</div></div>
+        <button class="ghost" id="refresh-sounds">تحديث</button>
+      </div>
+      <div class="sound-grid">
+        <label>الأذان ومواقيت الصلاة<select id="sound-prayer"></select></label>
+        <label>تنبيهات المهام<select id="sound-task"></select></label>
+        <label>تنبيهات الامتحانات<select id="sound-exam"></select></label>
+        <label>رسائل الفريق<select id="sound-team"></select></label>
+        <label>تحديثات التطبيق<select id="sound-update"></select></label>
+        <label>رسائل التشجيع<select id="sound-daily"></select></label>
+        <label>تذكيرات الأذكار<select id="sound-dhikr"></select></label>
+      </div>
+      <div class="row" style="margin-top:12px"><button id="save-sounds">حفظ الأصوات</button><span id="sounds-status" class="meta"></span></div>
+      <p class="meta">«افتراضي التطبيق» يعني الأذان المضمّن للصلاة، ونغمة مُنظِّم للأنواع الأخرى. «صامت» يُبقي الاهتزاز دون صوت.</p>
+    </div>
+
     <div class="card">
       <div class="row" style="justify-content:space-between"><strong>الرسائل المنشورة</strong><button class="ghost" id="refresh">تحديث</button></div>
       <div id="messages"></div>
@@ -101,6 +122,14 @@
   const esc = (value) => String(value || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const when = (value) => esc(String(value || "").slice(0, 16).replace("T", " · "));
   const profileLabels = { student: "طالب", graduate: "خريج", professional: "موظف", retired: "متقاعد", general: "عام" };
+  const soundLabels = {
+    prayer: "الأذان", task: "المهام", exam: "الامتحانات", team: "رسائل الفريق",
+    update: "التحديثات", daily: "التشجيع", dhikr: "الأذكار"
+  };
+  const soundChoices = [
+    ["default", "افتراضي التطبيق"], ["chime", "نغمة مُنظِّم"], ["adhan", "الآذان.mp3"],
+    ["system", "صوت النظام"], ["silent", "صامت مع اهتزاز"]
+  ];
   let users = [];
 
   function fillTarget(value) {
@@ -108,6 +137,23 @@
     field.value = value;
     field.focus();
     field.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function setupSoundSelects() {
+    for (const key of Object.keys(soundLabels)) {
+      const select = document.getElementById(`sound-${key}`);
+      select.innerHTML = soundChoices.map(([value, label]) => `<option value="${value}">${label}</option>`).join("");
+    }
+  }
+
+  function renderSounds(sounds) {
+    for (const key of Object.keys(soundLabels)) {
+      document.getElementById(`sound-${key}`).value = sounds[key] || "default";
+    }
+  }
+
+  function currentSounds() {
+    return Object.fromEntries(Object.keys(soundLabels).map((key) => [key, document.getElementById(`sound-${key}`).value]));
   }
 
   function renderUsers() {
@@ -158,12 +204,13 @@
   }
 
   async function load() {
-    const [messages, inbox, people] = await Promise.all([
+    const [messages, inbox, people, soundConfig] = await Promise.all([
       api("/api/admin/messages"),
       api("/api/admin/messages?view=inbox"),
-      api("/api/admin/messages?view=users")
+      api("/api/admin/messages?view=users"),
+      api("/api/admin/messages?view=sounds")
     ]);
-    if ([messages, inbox, people].some((response) => response.status === 401)) {
+    if ([messages, inbox, people, soundConfig].some((response) => response.status === 401)) {
       document.getElementById("login-card").hidden = false;
       document.getElementById("panel").hidden = true;
       return;
@@ -174,6 +221,7 @@
     renderInbox((await inbox.json()).items || []);
     users = (await people.json()).users || [];
     renderUsers();
+    if (soundConfig.ok) renderSounds((await soundConfig.json()).sounds || {});
   }
 
   // Delegation is registered once so repeated refreshes never stack listeners.
@@ -194,6 +242,16 @@
 
   document.getElementById("user-search").addEventListener("input", renderUsers);
   document.getElementById("refresh-users").addEventListener("click", load);
+  document.getElementById("refresh-sounds").addEventListener("click", load);
+
+  document.getElementById("save-sounds").addEventListener("click", async () => {
+    const status = document.getElementById("sounds-status");
+    const res = await api("/api/admin/messages?view=sounds", {
+      method: "POST", body: JSON.stringify({ sounds: currentSounds() })
+    });
+    status.textContent = res.ok ? "حُفظت الأصوات." : "تعذر الحفظ.";
+    if (res.ok) renderSounds((await res.json()).sounds || currentSounds());
+  });
 
   document.getElementById("send").addEventListener("click", async () => {
     const title = document.getElementById("title").value.trim();
@@ -209,10 +267,11 @@
   });
 
   document.getElementById("refresh").addEventListener("click", load);
+  setupSoundSelects();
   load().then(() => {
-    if (new URLSearchParams(location.search).get("view") === "users") {
-      document.getElementById("users-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    const view = new URLSearchParams(location.search).get("view");
+    if (view === "users") document.getElementById("users-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (view === "sounds") document.getElementById("sounds-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 </script>
 </body>

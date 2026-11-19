@@ -1,5 +1,8 @@
 const { isAdmin, parseBody, json } = require("../../lib/admin-auth");
-const { readMessages, appendMessage, removeMessage, readInbox, markSupport, readUsers } = require("../../lib/messaging-store");
+const {
+  readMessages, appendMessage, removeMessage, readInbox, markSupport, readUsers,
+  readNotificationSounds, writeNotificationSounds
+} = require("../../lib/messaging-store");
 const { normalizeUserCode } = require("../../lib/user-code");
 
 /** Admin: publish an instant message to every app, or delete one. */
@@ -19,6 +22,7 @@ module.exports = async function adminMessages(req, res) {
         );
         return json(res, 200, { users, total: users.length });
       }
+      if (view === "sounds") return json(res, 200, await readNotificationSounds());
       return json(res, 200, { messages: await readMessages() });
     }
     if (req.method === "DELETE") {
@@ -33,6 +37,7 @@ module.exports = async function adminMessages(req, res) {
       const status = ["new", "handled"].includes(body.status) ? body.status : "handled";
       return json(res, 200, { items: await markSupport(id, status) });
     }
+    if (view === "sounds") return json(res, 200, await writeNotificationSounds(body.sounds));
     const title = String(body.title || "").trim().slice(0, 90);
     const text = String(body.body || "").trim().slice(0, 900);
     const audienceProfile = ["", "student", "graduate", "professional", "retired", "general"].includes(
