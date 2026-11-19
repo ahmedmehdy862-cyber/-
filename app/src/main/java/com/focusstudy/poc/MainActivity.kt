@@ -509,6 +509,12 @@ private fun AppRoot(
         withContext(Dispatchers.IO) { runCatching { TeamMessages.checkForNew(context) } }
     }
 
+    // First launch and every later name change introduce the user to the admin dashboard.
+    // The request is fire-and-forget: offline users keep using the app normally.
+    LaunchedEffect(preferences.studentName, preferences.profile) {
+        withContext(Dispatchers.IO) { UserRegistry.register(context) }
+    }
+
     LaunchedEffect(preferences.smartRemindersEnabled, preferences.leadMinutes, preferences.notificationDensity) {
 
         ReminderEngine.channels(context)

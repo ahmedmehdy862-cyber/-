@@ -173,6 +173,19 @@ internal fun PrayerTimesScreen(onBack: () -> Unit) {
                         Text("ذكّرني عند دخول وقت الصلاة", color = FocusColors.TextPrimary)
                     }
                     if (enabled && !hasLocation) Text("احفظ موقعًا صالحًا لتبدأ التنبيهات.", color = FocusColors.TextSecondary)
+                    Text(
+                        "عند وقت الصلاة يظهر تنبيه عاجل على الشاشة ويُشغَّل الأذان محليًا من التطبيق، حتى والهاتف مقفل.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = FocusColors.TextSecondary
+                    )
+                    TextButton(onClick = {
+                        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                            androidx.core.content.ContextCompat.checkSelfPermission(
+                                context, Manifest.permission.POST_NOTIFICATIONS
+                            ) != PackageManager.PERMISSION_GRANTED
+                        ) notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        else PrayerReminderScheduler.notifyTest(context)
+                    }) { Text("جرّب صوت الأذان وظهور التنبيه") }
                 }
             }
         }

@@ -3,26 +3,42 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>رسائل الفريق والدعم — مُنظِّم</title>
+  <meta name="theme-color" content="#0b1322">
+  <meta name="robots" content="noindex, nofollow">
+  <title>رسائل الفريق والمستخدمين — مُنظِّم</title>
+  <link rel="icon" type="image/svg+xml" href="/brand.svg">
   <style>
     :root{--bg:#0b1322;--panel:#141f33;--line:#2a3a56;--ink:#f4f8fc;--muted:#9fb2c6;--mint:#16B8A6;--rose:#f43f5e}
-    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
-    .wrap{width:min(980px,calc(100% - 32px));margin:0 auto;padding:24px 0}
-    h1{font-size:22px;margin:0}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
-    a{color:var(--mint)}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px}
-    input,textarea{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0e1729;color:var(--ink);font:inherit;margin:6px 0}
-    button{padding:10px 16px;border-radius:12px;border:0;background:var(--mint);color:#04211e;font:inherit;font-weight:700;cursor:pointer}
+    *{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 8% 0%,#172d54 0,transparent 40%),var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",Tahoma,sans-serif;line-height:1.7}
+    .wrap{width:min(1040px,calc(100% - 32px));margin:0 auto;padding:24px 0}
+    h1{font-size:22px;margin:0}header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+    a{color:var(--mint)}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:16px;box-shadow:0 18px 40px #02050b33}
+    input,textarea,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0e1729;color:var(--ink);font:inherit;margin:6px 0}
+    button{padding:9px 14px;border-radius:12px;border:0;background:var(--mint);color:#04211e;font:inherit;font-weight:700;cursor:pointer}
     button.ghost{background:transparent;border:1px solid var(--line);color:var(--ink);font-weight:500}
+    button.link{background:none;color:var(--mint);padding:0;font-weight:600;text-decoration:underline}
     .item{border-top:1px solid var(--line);padding:12px 0;display:flex;gap:12px;justify-content:space-between;align-items:flex-start}
     .meta{color:var(--muted);font-size:13px}.new{color:#04211e;background:var(--mint);border-radius:999px;padding:1px 8px;font-size:12px}
     .handled{color:var(--muted)}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .row > label{margin:0}.row input,.row select{width:auto;flex:1;min-width:180px}
+    .table-tools{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .table-tools input{max-width:300px}.table-wrap{overflow-x:auto;margin-top:8px}
+    table{width:100%;border-collapse:collapse;min-width:640px}th,td{text-align:right;padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+    th{color:var(--muted);font-size:12px;font-weight:600}tbody tr:last-child td{border-bottom:0}
+    .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.4px;color:#9ce8dc}
+    .pill{display:inline-block;padding:2px 9px;border-radius:999px;background:#16b8a61c;color:#9ce8dc;font-size:12px}
+    @media(max-width:640px){.wrap{width:calc(100% - 20px);padding-top:14px}.card{padding:13px}.row > *{width:100%}}
   </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>رسائل الفريق والدعم</h1>
-    <div class="row"><a href="/admin/">لوحة الإصدارات</a><a href="/">الموقع</a></div>
+    <h1>رسائل الفريق والمستخدمين</h1>
+    <div class="row">
+      <a href="/admin/">لوحة الإصدارات</a>
+      <a href="https://qubixstore.vercel.app/admin" target="_blank" rel="noopener">إدارة المتجر ↗</a>
+      <a href="/">الموقع</a>
+    </div>
   </header>
 
   <div class="card" id="login-card" hidden>
@@ -39,7 +55,7 @@
       <textarea id="body" rows="3" maxlength="900" placeholder="نص الرسالة"></textarea>
       <div class="row">
         <label class="meta" for="audience">لمن؟</label>
-        <select id="audience" style="width:auto;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:#0e1729;color:var(--ink);font:inherit">
+        <select id="audience">
           <option value="">كل المستخدمين</option>
           <option value="student">الطلاب</option>
           <option value="graduate">الخريجون</option>
@@ -48,13 +64,25 @@
           <option value="general">الملف العام</option>
         </select>
         <label class="meta" for="min-version">من إصدار</label>
-        <input id="min-version" type="number" min="0" max="1000000" value="0" style="width:130px">
+        <input id="min-version" type="number" min="0" max="1000000" value="0" style="max-width:130px">
       </div>
       <div class="row">
         <label class="meta" for="target-user">لمستخدم بعينه — اكتب رمزه</label>
-        <input id="target-user" maxlength="64" placeholder="مثال: AB12-CD34 (الرمز داخل التطبيق › رسائل الفريق)">
+        <input id="target-user" maxlength="64" placeholder="مثال: AB12-CD34 (اختره من جدول المستخدمين أو من داخل التطبيق)">
       </div>
       <div class="row"><button id="send">نشر الرسالة</button><span id="send-status" class="meta"></span></div>
+    </div>
+
+    <div class="card" id="users-card">
+      <div class="table-tools">
+        <div><strong>المستخدمون الذين فتحوا التطبيق</strong><div class="meta">يصل اسمك ورمزك تلقائيًا عند أول فتح، ويُحدَّث عند تغيير الاسم — بلا حساب ولا رقم هاتف.</div></div>
+        <div class="row"><span id="user-count" class="meta"></span><button class="ghost" id="refresh-users">تحديث</button></div>
+      </div>
+      <div class="table-tools" style="margin-top:10px"><input id="user-search" type="search" placeholder="ابحث بالاسم أو الرمز أو الإصدار…"></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>الاسم</th><th>الرمز</th><th>الملف</th><th>الإصدار</th><th>أول ظهور</th><th>آخر ظهور</th><th>إجراء</th></tr></thead>
+        <tbody id="users"></tbody>
+      </table></div>
     </div>
 
     <div class="card">
@@ -70,7 +98,40 @@
 </div>
 <script>
   const api = (path, options = {}) => fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" }, ...options });
-  const esc = (value) => String(value || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c]));
+  const esc = (value) => String(value || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const when = (value) => esc(String(value || "").slice(0, 16).replace("T", " · "));
+  const profileLabels = { student: "طالب", graduate: "خريج", professional: "موظف", retired: "متقاعد", general: "عام" };
+  let users = [];
+
+  function fillTarget(value) {
+    const field = document.getElementById("target-user");
+    field.value = value;
+    field.focus();
+    field.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function renderUsers() {
+    const query = document.getElementById("user-search").value.trim().toLowerCase();
+    const box = document.getElementById("users");
+    const visible = users.filter((item) => [
+      item.name, item.code, item.versionName, item.profile
+    ].some((value) => String(value || "").toLowerCase().includes(query)));
+    document.getElementById("user-count").textContent = `${users.length} مستخدم · ${visible.length} ظاهر`;
+    if (!visible.length) {
+      box.innerHTML = `<tr><td colspan="7" class="meta">${users.length ? "لا نتائج مطابقة." : "لا مستخدمين مسجلين بعد."}</td></tr>`;
+      return;
+    }
+    box.innerHTML = visible.map((item) => `
+      <tr>
+        <td><strong>${esc(item.name || "مستخدم مُنظِّم")}</strong></td>
+        <td class="code">${esc(item.code || "—")}</td>
+        <td><span class="pill">${esc(profileLabels[item.profile] || item.profile || "عام")}</span></td>
+        <td>${esc(item.versionName || "—")}${item.versionCode ? ` <span class="meta">(${Number(item.versionCode)})</span>` : ""}</td>
+        <td class="meta">${when(item.firstSeen)}</td>
+        <td class="meta">${when(item.lastSeen)}</td>
+        <td><button class="ghost" data-message-code="${esc(item.code || "")}">مراسلة</button></td>
+      </tr>`).join("");
+  }
 
   function renderMessages(messages) {
     const box = document.getElementById("messages");
@@ -78,13 +139,9 @@
     box.innerHTML = messages.map((item) => `
       <div class="item">
         <div><strong>${esc(item.title)}</strong><div class="meta">${esc(item.body)}</div>
-        <div class="meta">${esc((item.at || "").slice(0, 16).replace("T", " · "))}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}${item.targetCode ? " · للرمز " + esc(item.targetCode) : item.targetUserId ? " · لجهاز " + esc(item.targetUserId) : ""}</div></div>
+        <div class="meta">${when(item.at)}${item.audienceProfile ? " · " + esc(item.audienceProfile) : " · للجميع"}${item.minVersionCode ? " · من إصدار " + Number(item.minVersionCode) : ""}${item.targetCode ? " · للرمز " + esc(item.targetCode) : item.targetUserId ? " · لجهاز " + esc(item.targetUserId) : ""}</div></div>
         <button class="ghost" data-delete="${esc(item.id)}">حذف</button>
       </div>`).join("");
-    box.querySelectorAll("[data-delete]").forEach((btn) => btn.addEventListener("click", async () => {
-      const res = await api("/api/admin/messages", { method: "DELETE", body: JSON.stringify({ id: btn.dataset.delete }) });
-      if (res.ok) load();
-    }));
   }
 
   function renderInbox(items) {
@@ -95,29 +152,18 @@
       <div class="item">
         <div><strong>${esc(item.name || "بدون اسم")}</strong> <span class="${item.status === "new" ? "new" : "handled"}">${item.status === "new" ? "جديدة" : "تمّت"}</span>
           <div>${esc(item.body)}</div>
-          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${esc((item.at || "").slice(0, 16).replace("T", " · "))} · نسخة ${esc(item.version || "?")}${item.uid ? ` · رمز <button class="link" data-uid="${esc(item.uid)}">${esc(`${item.uid.slice(0, 4)}-${item.uid.slice(4, 8)}`.toUpperCase())}</button>` : ""}</div></div>
+          <div class="meta">${esc(item.contact || "بلا وسيلة تواصل")} · ${when(item.at)} · نسخة ${esc(item.version || "?")}${item.uid ? ` · رمز <button class="link" data-code="${esc(String(item.uid).slice(0, 8).toUpperCase())}">${esc(String(item.uid).slice(0, 8).toUpperCase())}</button>` : ""}</div></div>
         <button class="ghost" data-mark="${esc(item.id)}" data-status="${item.status === "new" ? "handled" : "new"}">${item.status === "new" ? "تم" : "إرجاع"}</button>
       </div>`).join("");
-    box.querySelectorAll("[data-mark]").forEach((btn) => btn.addEventListener("click", async () => {
-      const res = await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ markId: btn.dataset.mark, status: btn.dataset.status }) });
-      if (res.ok) load();
-    }));
   }
 
   async function load() {
-    // Copying a sender's id is how the team answers one person instead of everyone.
-document.addEventListener("click", (event) => {
-  const button = event.target.closest("[data-uid]");
-  if (!button) return;
-  const field = document.getElementById("target-user");
-  if (!field) return;
-  field.value = button.dataset.uid;
-  field.focus();
-  button.textContent = "نُسخ";
-});
-
-const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/api/admin/messages?view=inbox")]);
-    if (messages.status === 401 || inbox.status === 401) {
+    const [messages, inbox, people] = await Promise.all([
+      api("/api/admin/messages"),
+      api("/api/admin/messages?view=inbox"),
+      api("/api/admin/messages?view=users")
+    ]);
+    if ([messages, inbox, people].some((response) => response.status === 401)) {
       document.getElementById("login-card").hidden = false;
       document.getElementById("panel").hidden = true;
       return;
@@ -125,9 +171,29 @@ const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/a
     document.getElementById("login-card").hidden = true;
     document.getElementById("panel").hidden = false;
     renderMessages((await messages.json()).messages || []);
-    const box = await inbox.json();
-    renderInbox(box.items || []);
+    renderInbox((await inbox.json()).items || []);
+    users = (await people.json()).users || [];
+    renderUsers();
   }
+
+  // Delegation is registered once so repeated refreshes never stack listeners.
+  document.addEventListener("click", async (event) => {
+    const button = event.target.closest("button");
+    if (!button) return;
+    if (button.dataset.messageCode || button.dataset.code) {
+      fillTarget(button.dataset.messageCode || button.dataset.code);
+      return;
+    }
+    if (button.dataset.delete) {
+      if ((await api("/api/admin/messages", { method: "DELETE", body: JSON.stringify({ id: button.dataset.delete }) })).ok) load();
+    }
+    if (button.dataset.mark) {
+      if ((await api("/api/admin/messages", { method: "POST", body: JSON.stringify({ markId: button.dataset.mark, status: button.dataset.status }) })).ok) load();
+    }
+  });
+
+  document.getElementById("user-search").addEventListener("input", renderUsers);
+  document.getElementById("refresh-users").addEventListener("click", load);
 
   document.getElementById("send").addEventListener("click", async () => {
     const title = document.getElementById("title").value.trim();
@@ -143,7 +209,11 @@ const [messages, inbox] = await Promise.all([api("/api/admin/messages"), api("/a
   });
 
   document.getElementById("refresh").addEventListener("click", load);
-  load();
+  load().then(() => {
+    if (new URLSearchParams(location.search).get("view") === "users") {
+      document.getElementById("users-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
 </script>
 </body>
 </html>

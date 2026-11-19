@@ -1,18 +1,12 @@
 package com.focusstudy.poc
 
 import android.app.AlarmManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.util.Log
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.BitmapFactory
-import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -25,8 +19,6 @@ internal object StudyNotificationScheduler {
     const val ACTION_MORNING = "com.focusstudy.poc.MORNING_MESSAGE"
     const val ACTION_EVENING = "com.focusstudy.poc.EVENING_MESSAGE"
 
-    private const val TASK_CHANNEL = "task_reminders_mandatory"
-    private const val GENERAL_CHANNEL = "daily_encouragement"
     private const val TASK_NOTIFICATION_ID = 5101
     private const val MORNING_NOTIFICATION_ID = 5102
     private const val EVENING_NOTIFICATION_ID = 5103
@@ -115,13 +107,10 @@ internal object StudyNotificationScheduler {
         if (!notificationsAllowed(context)) return
         post(
             context = context,
-            channelId = GENERAL_CHANNEL,
-            channelName = "رسائل التشجيع",
-            description = "رسائل صباحية ومسائية اختيارية بالاسم الذي خصصته.",
+            channel = AppNotifications.DAILY,
             notificationId = 5999,
             title = "الإشعارات تعمل ✓",
-            message = "هكذا سيصلك تذكير المهام ورسائل الفريق. اضغط لفتح مهامي.",
-            highPriority = false,
+            message = "هكذا سيصلك صوت مُنظِّم المميز. اضغط لفتح مهامي.",
             openTasks = true
         )
     }
@@ -176,13 +165,10 @@ internal object StudyNotificationScheduler {
         )
         post(
             context,
-            channelId = TASK_CHANNEL,
-            channelName = "تذكيرات المهام الأساسية",
-            description = "تذكير متكرر بالمهام غير المكتملة، ويتوقف تلقائيًا أثناء جلسة التركيز.",
+            channel = AppNotifications.TASK,
             notificationId = TASK_NOTIFICATION_ID,
             title = "خطوة واحدة تكفي الآن",
             message = message,
-            highPriority = true,
             openTasks = true
         )
     }
@@ -207,47 +193,28 @@ internal object StudyNotificationScheduler {
         )
         post(
             context,
-            channelId = GENERAL_CHANNEL,
-            channelName = "رسائل التشجيع",
-            description = "رسائل صباحية ومسائية اختيارية بالاسم الذي خصصته.",
+            channel = AppNotifications.DAILY,
             notificationId = if (morning) MORNING_NOTIFICATION_ID else EVENING_NOTIFICATION_ID,
             title = if (morning) "صباح الخير ☀️" else "مساء التقدم 🌙",
             message = message,
-            highPriority = false,
             avatarPath = prefs.avatarPath,
             openTasks = true
         )
     }
 
-    private fun notificationsAllowed(context: Context): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+    private fun notificationsAllowed(context: Context): Boolean = AppNotifications.canPost(context)
 
-    private fun notificationManager(context: Context) =
-        context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+    private fun notificationManager(context: Context) = AppNotifications.manager(context)
 
     private fun post(
         context: Context,
-        channelId: String,
-        channelName: String,
-        description: String,
+        channel: AlertChannel,
         notificationId: Int,
         title: String,
         message: String,
-        highPriority: Boolean,
         avatarPath: String = "",
         openTasks: Boolean = false
     ) {
-        val manager = notificationManager(context)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(
-                    channelId,
-                    channelName,
-                    if (highPriority) NotificationManager.IMPORTANCE_HIGH else NotificationManager.IMPORTANCE_DEFAULT
-                ).apply { this.description = description }
-            )
-        }
         val openApp = PendingIntent.getActivity(
             context,
             notificationId,
@@ -256,19 +223,15 @@ internal object StudyNotificationScheduler {
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val builder = NotificationCompat.Builder(context, channelId)
-            .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle(title)
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setContentIntent(openApp)
-            .setAutoCancel(true)
-            .setPriority(if (highPriority) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT)
-        if (highPriority) builder.setCategory(NotificationCompat.CATEGORY_REMINDER).setDefaults(NotificationCompat.DEFAULT_ALL)
-        if (avatarPath.isNotBlank()) {
-            BitmapFactory.decodeFile(avatarPath)?.let(builder::setLargeIcon)
-        }
-        manager.notify(notificationId, builder.build())
+        val builder = AppNotifications.builder(
+            context = context,
+            channel = channel,
+            title = title,
+            message = message,
+            contentIntent = openApp,
+            largeIcon = if (avatarPath.isNotBlank()) BitmapFactory.decodeFile(avatarPath) else null
+        )
+        notificationManager(context).notify(notificationId, builder.build())
     }
 }
 

@@ -1,6 +1,9 @@
 package com.focusstudy.poc
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.util.UUID
 
 /**
@@ -36,5 +39,29 @@ object UserIdentity {
     internal fun codeOf(rawId: String): String {
         val clean = rawId.lowercase().filter { it.isLetterOrDigit() }.take(8).uppercase()
         return if (clean.length == 8) clean.chunked(4).joinToString("-") else clean
+    }
+}
+
+/**
+ * Quietly introduces this install to the team dashboard.
+ *
+ * There is no sign-up form and no extra tap: the app sends the anonymous install id, the name the
+ * person already typed in «ملفك الشخصي», and the current version. Nothing else leaves the device.
+ * The dashboard stores it under the short code shown in «رسائل الفريق», so the team can recognise
+ * and answer a new user without ever asking for a phone number or email address.
+ */
+internal object UserRegistry {
+    suspend fun register(context: Context) = withContext(Dispatchers.IO) {
+        runCatching {
+            val prefs = FocusPreferences.load(context)
+            val payload = JSONObject()
+                .put("action", "register")
+                .put("uid", UserIdentity.id(context))
+                .put("name", prefs.studentName.ifBlank { "مستخدم مُنظِّم" })
+                .put("profile", prefs.profile.key)
+                .put("versionName", TeamMessages.versionName(context))
+                .put("versionCode", TeamMessages.versionCode(context))
+            TeamMessages.request("${TeamMessages.BASE}/api/messages", "POST", payload.toString())
+        }
     }
 }

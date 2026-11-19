@@ -1,17 +1,12 @@
 package com.focusstudy.poc
 
 import android.app.AlarmManager
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
-import androidx.core.app.NotificationCompat
-import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -42,7 +37,6 @@ internal object AppUpdateManager {
     const val EXTRA_OPEN_UPDATES = "com.focusstudy.poc.OPEN_UPDATES"
     private const val ACTION_CHECK = "com.focusstudy.poc.CHECK_UPDATES"
     private const val FEED_PREFS = "focus_study_update_state"
-    private const val CHANNEL_ID = "app_updates"
     private const val NOTIFICATION_ID = 8201
     private const val REQUEST_CODE = 8202
     private const val CHECK_INTERVAL = 24 * 60 * 60 * 1000L
@@ -161,22 +155,9 @@ internal object AppUpdateManager {
         }
 
     private fun notifyIfNeeded(context: Context, release: AppRelease) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-            ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return
-
         val prefs = context.getSharedPreferences(FEED_PREFS, Context.MODE_PRIVATE)
         if (prefs.getLong("last_notified_version", 0L) >= release.versionCode) return
-        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        if (!manager.areNotificationsEnabled()) return
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "تحديثات التطبيق", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                    description = "تنبيه عند توفر إصدار جديد من مُنظِّم"
-                }
-            )
-            if (manager.getNotificationChannel(CHANNEL_ID)?.importance == NotificationManager.IMPORTANCE_NONE) return
-        }
+        if (!AppNotifications.canPost(context)) return
         val openUpdates = PendingIntent.getActivity(
             context,
             REQUEST_CODE,
@@ -186,16 +167,14 @@ internal object AppUpdateManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         val message = "الإصدار ${release.versionName} يضيف تحسينات جديدة. افتح التطبيق للتحديث من المتجر."
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle("تحديث جديد لـ مُنظِّم")
-            .setContentText(message)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
-            .setContentIntent(openUpdates)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-        manager.notify(NOTIFICATION_ID, notification)
+        val notification = AppNotifications.builder(
+            context = context,
+            channel = AppNotifications.UPDATE,
+            title = "تحديث جديد لـ مُنظِّم",
+            message = message,
+            contentIntent = openUpdates
+        ).build()
+        AppNotifications.manager(context).notify(NOTIFICATION_ID, notification)
         prefs.edit().putLong("last_notified_version", release.versionCode).apply()
     }
 

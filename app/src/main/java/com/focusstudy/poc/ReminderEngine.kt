@@ -9,7 +9,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.time.Instant
 import java.time.LocalDate
@@ -48,26 +47,17 @@ internal object ReminderEngine {
     const val EXTRA_REMINDER_ID = "reminder_id"
     const val EXTRA_KIND = "reminder_kind"
 
-    const val CHANNEL_TASKS = "tasks_v2"
-    const val CHANNEL_EXAMS = "exams"
-    const val CHANNEL_SUMMARY = "session_summary"
+    private const val CHANNEL_SUMMARY = "session_summary"
 
     private const val MAX_ALARMS = 10
     private const val NOTIFICATION_BASE_ID = 7300
 
     fun channels(context: Context) {
+        // Task and exam alerts use the new high-priority channels so they appear on screen.
+        AppNotifications.ensure(context, AppNotifications.TASK)
+        AppNotifications.ensure(context, AppNotifications.EXAM)
         if (Build.VERSION.SDK_INT < 26) return
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_TASKS, "تذكيرات المهام", NotificationManager.IMPORTANCE_HIGH).apply {
-                description = "تذكير واحد لكل مهمة، يتأجل أثناء الصلاة والجلسة وساعات الهدوء"
-            }
-        )
-        manager.createNotificationChannel(
-            NotificationChannel(CHANNEL_EXAMS, "الامتحانات", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "عدّ تنازلي قبل الامتحانات: 7 و3 ويوم"
-            }
-        )
         manager.createNotificationChannel(
             NotificationChannel(CHANNEL_SUMMARY, "ملخص الجلسة", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "ما وصلك أثناء جلسة التركيز، بعد انتهائها"
@@ -259,17 +249,15 @@ internal object ReminderEngine {
         val title = examSubject?.let { "امتحان ${it.name}" }
             ?: task?.let { "مهمة: ${it.title}" }
             ?: "مُمنظِّم"
-        val channel = if (examSubject != null) CHANNEL_EXAMS else CHANNEL_TASKS
+        val alert = if (examSubject != null) AppNotifications.EXAM else AppNotifications.TASK
         val notificationId = NOTIFICATION_BASE_ID + (if (taskId >= 0) taskId else -taskId).toInt()
-        val builder = NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle(title)
-            .setContentText(body.take(140))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
-            .setAutoCancel(true)
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setContentIntent(openIntent(context, taskId))
+        val builder = AppNotifications.builder(
+            context = context,
+            channel = alert,
+            title = title,
+            message = body,
+            contentIntent = openIntent(context, taskId)
+        )
 
         if (taskId >= 0) {
             builder.addAction(0, "تمّ", actionIntent(context, ACTION_DONE, taskId, 1))

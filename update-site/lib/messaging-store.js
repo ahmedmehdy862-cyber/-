@@ -1,13 +1,17 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { userCode } = require("./user-code");
 
 const MESSAGES_PATH = "focus-study/team-messages.json";
 const INBOX_PATH = "focus-study/support-inbox.json";
+const USERS_PATH = "focus-study/users.json";
 const LOCAL_DIR = path.join(__dirname, "..", ".data");
-// Broadcast messages are public; the support inbox holds user-submitted contact details and is
-// read/written only through the server-side @vercel/blob client with BLOB_READ_WRITE_TOKEN.
+// Broadcast messages are public; the support inbox and user registry hold user-submitted details
+// and are read/written only through the server-side @vercel/blob client with BLOB_READ_WRITE_TOKEN.
 const MESSAGES_ACCESS = "public";
 const INBOX_ACCESS = "private";
+const USERS_ACCESS = "private";
+const MAX_USERS = 1000;
 
 async function readBlobJson(blobPath, access) {
   const { get } = await import("@vercel/blob");
@@ -117,6 +121,27 @@ async function markSupport(id, status) {
   return next;
 }
 
+async function readUsers() {
+  const record = await readJson(USERS_PATH, { users: [] }, USERS_ACCESS);
+  return Array.isArray(record.users) ? record.users : [];
+}
+
+/** Upsert by anonymous install id, keeping the original first-seen timestamp. */
+async function upsertUser(entry) {
+  const users = await readUsers();
+  const now = new Date().toISOString();
+  const existing = users.find((item) => item.id === entry.id);
+  const next = existing
+    ? users.map((item) => item.id === entry.id
+      ? { ...item, ...entry, code: userCode(entry.id), lastSeen: now, updatedAt: now }
+      : item)
+    : [{ ...entry, code: userCode(entry.id), firstSeen: now, lastSeen: now, updatedAt: now }, ...users]
+      .slice(0, MAX_USERS);
+  await writeJson(USERS_PATH, { users: next }, USERS_ACCESS);
+  return next;
+}
+
 module.exports = {
   readMessages, appendMessage, removeMessage, readInbox, appendSupport, markSupport,
+  readUsers, upsertUser,
 };

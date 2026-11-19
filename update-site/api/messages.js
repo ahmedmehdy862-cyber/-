@@ -1,13 +1,21 @@
-const { readMessages } = require("../lib/messaging-store");
+const { readMessages, upsertUser } = require("../lib/messaging-store");
 const { userCode } = require("../lib/user-code");
+const { parseBody } = require("../lib/admin-auth");
+
+const cut = (value, max) => String(value || "").trim().slice(0, max);
 
 /**
  * Public feed. A message can be limited to one usage profile (student/professional/…) and to
  * app builds at or above a version code, so the team can speak to the right people.
+ *
+ * POST /api/messages is the quiet "new user" handshake: the app sends the name it already has and
+ * its anonymous install id, and the dashboard lists the person under the same short code shown in
+ * the app. It shares this function so the deployment stays within the Hobby function limit.
  */
 module.exports = async function messages(request, response) {
+  if (request.method === "POST") return register(request, response);
   if (request.method !== "GET") {
-    response.setHeader("Allow", "GET");
+    response.setHeader("Allow", "GET, POST");
     return response.status(405).json({ error: "method_not_allowed" });
   }
   try {
@@ -43,3 +51,29 @@ module.exports = async function messages(request, response) {
     return response.status(503).json({ error: "messages_unavailable" });
   }
 };
+
+async function register(request, response) {
+  const body = parseBody(request.body);
+  if (String(body.action || "") !== "register") {
+    return response.status(400).json({ error: "invalid_action" });
+  }
+  const id = cut(body.uid, 64).toLowerCase();
+  if (!/^[a-z0-9-]{6,64}$/.test(id)) {
+    return response.status(400).json({ error: "invalid_user" });
+  }
+  const allowedProfiles = new Set(["", "student", "graduate", "professional", "retired", "general"]);
+  const entry = {
+    id,
+    name: cut(body.name, 60) || "مستخدم مُنظِّم",
+    profile: allowedProfiles.has(cut(body.profile, 24)) ? cut(body.profile, 24) : "general",
+    versionName: cut(body.versionName, 32),
+    versionCode: Math.max(0, Math.min(1_000_000, Number(body.versionCode) || 0)),
+  };
+  try {
+    await upsertUser(entry);
+    response.setHeader("Cache-Control", "no-store");
+    return response.status(200).json({ ok: true, code: userCode(id) });
+  } catch {
+    return response.status(503).json({ error: "registration_unavailable" });
+  }
+}

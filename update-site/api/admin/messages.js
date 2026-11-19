@@ -1,5 +1,5 @@
 const { isAdmin, parseBody, json } = require("../../lib/admin-auth");
-const { readMessages, appendMessage, removeMessage, readInbox, markSupport } = require("../../lib/messaging-store");
+const { readMessages, appendMessage, removeMessage, readInbox, markSupport, readUsers } = require("../../lib/messaging-store");
 const { normalizeUserCode } = require("../../lib/user-code");
 
 /** Admin: publish an instant message to every app, or delete one. */
@@ -7,11 +7,17 @@ module.exports = async function adminMessages(req, res) {
   if (!isAdmin(req)) return json(res, 401, { error: "authentication_required" });
   try {
     // Inbox lives on the same function: the Hobby plan allows 12 serverless functions per deployment.
-    const wantsInbox = String(req.query?.view || "") === "inbox";
+    const view = String(req.query?.view || "");
     if (req.method === "GET") {
-      if (wantsInbox) {
+      if (view === "inbox") {
         const items = await readInbox();
         return json(res, 200, { items, open: items.filter((item) => item.status === "new").length });
+      }
+      if (view === "users") {
+        const users = (await readUsers()).sort((a, b) =>
+          String(b.firstSeen || "").localeCompare(String(a.firstSeen || ""))
+        );
+        return json(res, 200, { users, total: users.length });
       }
       return json(res, 200, { messages: await readMessages() });
     }

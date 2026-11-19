@@ -1,13 +1,8 @@
 package com.focusstudy.poc
 
-import android.Manifest
-import android.app.Notification
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -57,7 +52,7 @@ data class TeamMessage(val id: String, val title: String, val body: String, val 
  */
 object TeamMessages {
 
-    private const val BASE = "https://update-site-sigma.vercel.app"
+    internal const val BASE = "https://update-site-sigma.vercel.app"
     private const val PREFS = "focus_team_messages"
     private const val CACHE = "cache"
     private const val DISMISSED = "dismissed"
@@ -156,7 +151,7 @@ object TeamMessages {
         if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode.toInt() else @Suppress("DEPRECATION") info.versionCode
     }.getOrDefault(0)
 
-    private fun versionName(context: Context): String = runCatching {
+    internal fun versionName(context: Context): String = runCatching {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
     }.getOrDefault("")
 
@@ -268,7 +263,6 @@ internal fun TeamMessagesScreen(onBack: () -> Unit) {
 
 /** Local notification so an announcement is not missed when the app is closed. */
 internal object TeamNotifier {
-    private const val CHANNEL = "team_messages"
     private const val MAX_INDIVIDUAL = 4
 
     /** One notification per message, then a count for the rest so the shade never floods. */
@@ -291,36 +285,23 @@ internal object TeamNotifier {
     }
 
     fun notify(context: Context, message: TeamMessage): Boolean {
-        val manager = context.getSystemService(NotificationManager::class.java) ?: return false
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            manager.createNotificationChannel(
-                NotificationChannel(CHANNEL, "رسائل الفريق", NotificationManager.IMPORTANCE_DEFAULT)
-            )
-        }
-        if (android.os.Build.VERSION.SDK_INT >= 33 &&
-            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) return false
+        if (!AppNotifications.canPost(context)) return false
         val intent = PendingIntent.getActivity(
             context,
             0,
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
-        val builder = if (android.os.Build.VERSION.SDK_INT >= 26) {
-            Notification.Builder(context, CHANNEL)
-        } else {
-            @Suppress("DEPRECATION")
-            Notification.Builder(context)
-        }
-        val notification = builder
-            .setSmallIcon(R.drawable.ic_stat_focus)
-            .setContentTitle(message.title)
-            .setContentText(message.body)
-            .setStyle(Notification.BigTextStyle().bigText(message.body))
-            .setContentIntent(intent)
-            .setAutoCancel(true)
-            .build()
-        return runCatching { manager.notify(message.id.hashCode(), notification) }.isSuccess
+        val notification = AppNotifications.builder(
+            context = context,
+            channel = AppNotifications.TEAM,
+            title = message.title,
+            message = message.body,
+            contentIntent = intent
+        ).build()
+        return runCatching {
+            AppNotifications.manager(context).notify(message.id.hashCode(), notification)
+        }.isSuccess
     }
 }
 
@@ -365,7 +346,7 @@ private fun MessageCodeCard() {
                 }) { Text("إرسال") }
             }
             Text(
-                "أعطِ هذا الرمز للفريق ليصلك رد خاص داخل التطبيق — لا نطلب بريدك ولا معرّف جهازك.",
+                "يظهر اسمك ورمزك تلقائيًا في لوحة الفريق عند أول فتح، ويمكنك إعطاء الرمز ليصلك رد خاص — لا نطلب بريدك ولا رقم هاتفك.",
                 style = MaterialTheme.typography.bodySmall,
                 color = FocusColors.TextSecondary
             )
