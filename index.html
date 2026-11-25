@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مكامن — اكتشف مكامن قوتك</title>
+<meta name="description" content="اختبار مجاني وأصلي يكشف ترتيب ٣٤ مكمنًا من مكامن القوة لديك، بنتائج فورية قابلة للمشاركة.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zain:wght@300;400;700;800&family=Noto+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div class="pattern-bg" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="#">
+      <span class="brand-mark">م</span>
+      <span class="brand-name">مَكامِن</span>
+    </a>
+    <span class="header-note">اختبار مجاني · ١٥ دقيقة</span>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ============ HERO ============ -->
+  <section id="screen-hero" class="screen">
+    <div class="hero">
+      <p class="hero-kicker">اختبار مكامن القوة</p>
+      <h1 class="hero-title">كلٌّ منّا يخفي مكامن قوّة.<br>اكتشف مكامنك.</h1>
+      <p class="hero-lead">
+        أجب عن ١٠٢ عبارة قصيرة، وسيرتّب لك الاختبار ٣٤ مكمنًا من مكامن القوة
+        — من الإنجاز إلى الاستراتيجية — ويُظهر لك أعلى خمسة مكامن لديك مع وصفٍ لكلٍّ منها.
+      </p>
+      <div class="hero-actions">
+        <button id="btn-start" class="btn btn-primary btn-lg">ابدأ الاختبار</button>
+        <button id="btn-resume" class="btn btn-ghost btn-lg" hidden>أكمل من حيث توقفت</button>
+      </div>
+      <ul class="hero-facts">
+        <li><strong>٣٤</strong><span>مكمن قوة</span></li>
+        <li><strong>١٠٢</strong><span>عبارة قصيرة</span></li>
+        <li><strong>١٥</strong><span>دقيقة تقريبًا</span></li>
+      </ul>
+      <p class="hero-note">
+        إجاباتك تبقى على جهازك؛ لا حساب، لا بريد، لا خادم.
+        نتيجتك تُحسب في متصفحك وحدك.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section id="screen-quiz" class="screen" hidden>
+    <div class="quiz-top">
+      <div class="progress">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="quiz-meta">
+        <span id="quiz-counter">العبارة ١ من ١٠٢</span>
+        <button id="btn-quit" class="link-btn">حفظ والخروج</button>
+      </div>
+    </div>
+    <div class="quiz-card" id="quiz-card">
+      <p class="quiz-statement" id="quiz-statement"></p>
+      <div class="quiz-options" id="quiz-options"></div>
+      <div class="quiz-nav">
+        <button id="btn-prev" class="link-btn">‹ العبارة السابقة</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS ============ -->
+  <section id="screen-results" class="screen" hidden>
+    <div class="results-hero">
+      <p class="hero-kicker">نتيجتك</p>
+      <h2 class="results-title">أعلى خمسة مكامن لديك</h2>
+      <p class="results-sub" id="results-sub"></p>
+    </div>
+
+    <div class="top5" id="top5"></div>
+
+    <div class="share-bar">
+      <button id="btn-copy" class="btn btn-primary">انسخ نتيجتك</button>
+      <button id="btn-share" class="btn btn-ghost">انسخ رابط النتيجة</button>
+      <button id="btn-restart" class="btn btn-ghost">أعد الاختبار</button>
+    </div>
+    <p class="share-hint" id="share-hint" hidden>تم النسخ ✓</p>
+
+    <h3 class="ranking-title">ترتيبك الكامل — ٣٤ مكمنًا</h3>
+    <div class="ranking" id="ranking"></div>
+
+    <div class="how">
+      <h4>كيف تُحسب النتيجة؟</h4>
+      <p>
+        كل مكمن قياسُه ثلاث عبارات، وتُجمع درجاتك عليها (من ٣ إلى ١٥).
+        يُرتَّب المكامن الأربعة والثلاثون تنازليًا حسب مجموعك، فأعلى خمسة
+        هي أنماط قوّتك الأقرب لطبيعتك اليوم. النتيجة لقطة لحاضرك، لا حكم على قدراتك.
+      </p>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <p>
+      «مكامن» اختبار مستقل بأسئلة ومفاهيم ووصف أصلية، غير تابع لشركة Gallup
+      ولا لاختبار CliftonStrengths. النتائج لأغراض التطوير الذاتي وليست تشخيصًا نفسيًا.
+    </p>
+  </div>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
